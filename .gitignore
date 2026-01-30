@@ -1,0 +1,43 @@
+# Go binaries (root only)
+/waynebot
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Dependencies
+vendor/
+
+# Frontend
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Notes
+.notes/

@@ -34,12 +34,28 @@ func NewRouter(database *db.DB, corsOrigins []string) http.Handler {
 	})
 
 	ah := &AuthHandler{DB: database}
+	ch := &ChannelHandler{DB: database}
+	ph := &PersonaHandler{DB: database}
+	ih := &InviteHandler{DB: database}
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/register", ah.Register)
 		r.Post("/auth/login", ah.Login)
 		r.With(auth.RequireAuth).Post("/auth/logout", ah.Logout)
 		r.With(auth.RequireAuth).Get("/auth/me", ah.Me)
+
+		r.With(auth.RequireAuth).Get("/channels", ch.ListChannels)
+		r.With(auth.RequireAuth).Post("/channels", ch.CreateChannel)
+		r.With(auth.RequireAuth).Get("/channels/{id}/messages", ch.GetMessages)
+		r.With(auth.RequireAuth).Post("/channels/{id}/messages", ch.PostMessage)
+
+		r.With(auth.RequireAuth).Get("/personas", ph.ListPersonas)
+		r.With(auth.RequireAuth).Post("/personas", ph.CreatePersona)
+		r.With(auth.RequireAuth).Put("/personas/{id}", ph.UpdatePersona)
+		r.With(auth.RequireAuth).Delete("/personas/{id}", ph.DeletePersona)
+
+		r.With(auth.RequireAuth).Post("/invites", ih.CreateInvite)
+		r.With(auth.RequireAuth).Get("/invites", ih.ListInvites)
 	})
 
 	return r

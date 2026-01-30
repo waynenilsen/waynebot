@@ -32,3 +32,5 @@ got stuck ? make a note in /.notes/<yyyy-mm-dd-hh-mm-ss>-title-of-note.md
 when using crumbler use it as ./crumbler its a symlink to a lib we have use ./crumbler help to learn more
 
 the plans are not set in stone if they don't make sense go ahead into another direction :)
+
+when you finish a chunk of work, format the code, use git add . to add everything (yes everything) and git commit to commit use conventional commits format and use git push origin HEAD to push it up

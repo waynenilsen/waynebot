@@ -9,10 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
-
+	"github.com/waynenilsen/waynebot/internal/api"
 	"github.com/waynenilsen/waynebot/internal/config"
 	"github.com/waynenilsen/waynebot/internal/db"
 )
@@ -32,25 +29,11 @@ func main() {
 	}
 	log.Printf("database ready, schema version %d", v)
 
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.CORSOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
-
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ok")
-	})
+	router := api.NewRouter(database, cfg.CORSOrigins)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: r,
+		Handler: router,
 	}
 
 	// Graceful shutdown on SIGINT/SIGTERM.

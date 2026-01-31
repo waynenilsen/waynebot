@@ -38,6 +38,7 @@ function reducer(state: AppState, action: AppAction): AppState {
     case "ADD_MESSAGE": {
       const chId = action.message.channel_id;
       const existing = state.messages[chId] ?? [];
+      if (existing.some((m) => m.id === action.message.id)) return state;
       return {
         ...state,
         messages: { ...state.messages, [chId]: [...existing, action.message] },

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import App from "./App";
+import { AppProvider } from "./store/AppContext";
 import type { AuthResponse, User } from "./types";
 
 const alice: User = {
@@ -16,6 +17,8 @@ vi.mock("./api", () => ({
   register: vi.fn(),
   logout: vi.fn(),
   getMe: vi.fn(),
+  getChannels: vi.fn(),
+  createChannel: vi.fn(),
 }));
 
 vi.mock("./utils/token", () => ({
@@ -24,37 +27,53 @@ vi.mock("./utils/token", () => ({
   clearToken: vi.fn(),
 }));
 
+vi.mock("./ws", () => ({
+  connectWs: vi.fn(() => ({
+    close: vi.fn(),
+    getState: () => "disconnected" as const,
+  })),
+}));
+
 import * as api from "./api";
 import * as tokenUtils from "./utils/token";
 
 const mockApi = vi.mocked(api);
 const mockToken = vi.mocked(tokenUtils);
 
+function renderApp() {
+  return render(
+    <AppProvider>
+      <App />
+    </AppProvider>,
+  );
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   mockToken.getToken.mockReturnValue(null);
+  mockApi.getChannels.mockResolvedValue([]);
 });
 
 describe("App", () => {
   it("shows loading state initially when token exists", () => {
     mockToken.getToken.mockReturnValue("tok_abc");
     mockApi.getMe.mockReturnValue(new Promise(() => {})); // never resolves
-    render(<App />);
+    renderApp();
     expect(screen.getByText("loading...")).toBeInTheDocument();
   });
 
   it("shows login page when no user", async () => {
-    render(<App />);
+    renderApp();
     await waitFor(() =>
       expect(screen.getByText("Sign in to your workspace")).toBeInTheDocument(),
     );
   });
 
-  it("shows welcome message after login", async () => {
+  it("shows layout with sidebar after login", async () => {
     mockApi.login.mockResolvedValue(authResp);
     const user = userEvent.setup();
 
-    render(<App />);
+    renderApp();
     await waitFor(() =>
       expect(screen.getByLabelText("Username")).toBeInTheDocument(),
     );
@@ -66,15 +85,16 @@ describe("App", () => {
     );
 
     await waitFor(() => expect(screen.getByText("alice")).toBeInTheDocument());
-    expect(screen.getByText(/welcome,/i)).toBeInTheDocument();
+    expect(screen.getByText("waynebot")).toBeInTheDocument();
   });
 
-  it("restores session from token and shows welcome", async () => {
+  it("restores session from token and shows layout", async () => {
     mockToken.getToken.mockReturnValue("tok_abc");
     mockApi.getMe.mockResolvedValue(alice);
 
-    render(<App />);
+    renderApp();
     await waitFor(() => expect(screen.getByText("alice")).toBeInTheDocument());
+    expect(screen.getByText("waynebot")).toBeInTheDocument();
   });
 
   it("shows login page after logout", async () => {
@@ -83,10 +103,10 @@ describe("App", () => {
     mockApi.logout.mockResolvedValue(undefined);
     const user = userEvent.setup();
 
-    render(<App />);
+    renderApp();
     await waitFor(() => expect(screen.getByText("alice")).toBeInTheDocument());
 
-    await user.click(screen.getByText("Sign out"));
+    await user.click(screen.getByText("logout"));
 
     await waitFor(() =>
       expect(screen.getByText("Sign in to your workspace")).toBeInTheDocument(),

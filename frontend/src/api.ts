@@ -1,10 +1,13 @@
 import type {
+  AgentStatsResponse,
   AgentStatusResponse,
   AuthResponse,
   Channel,
   Invite,
+  LLMCall,
   Message,
   Persona,
+  ToolExecution,
   User,
 } from "./types";
 import { clearToken, getToken, setToken } from "./utils/token";
@@ -173,6 +176,38 @@ export async function startAgents(): Promise<void> {
 
 export async function stopAgents(): Promise<void> {
   return apiFetch<void>("/api/agents/stop", { method: "POST" });
+}
+
+export async function getAgentLLMCalls(
+  personaId: number,
+  opts?: { limit?: number; offset?: number },
+): Promise<LLMCall[]> {
+  const params = new URLSearchParams();
+  if (opts?.limit) params.set("limit", String(opts.limit));
+  if (opts?.offset) params.set("offset", String(opts.offset));
+  const qs = params.toString();
+  return apiFetch<LLMCall[]>(
+    `/api/agents/${personaId}/llm-calls${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function getAgentToolExecutions(
+  personaId: number,
+  opts?: { limit?: number; offset?: number },
+): Promise<ToolExecution[]> {
+  const params = new URLSearchParams();
+  if (opts?.limit) params.set("limit", String(opts.limit));
+  if (opts?.offset) params.set("offset", String(opts.offset));
+  const qs = params.toString();
+  return apiFetch<ToolExecution[]>(
+    `/api/agents/${personaId}/tool-executions${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function getAgentStats(
+  personaId: number,
+): Promise<AgentStatsResponse> {
+  return apiFetch<AgentStatsResponse>(`/api/agents/${personaId}/stats`);
 }
 
 export { ApiError };

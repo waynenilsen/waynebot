@@ -39,6 +39,13 @@ export function useWebSocket(authenticated: boolean) {
           ) {
             incrementUnread(msg.channel_id);
           }
+        } else if (
+          event.type === "agent_llm_call" ||
+          event.type === "agent_tool_execution"
+        ) {
+          window.dispatchEvent(
+            new CustomEvent(event.type, { detail: event.data }),
+          );
         }
       },
       (state: ConnectionState) => {

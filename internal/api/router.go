@@ -71,6 +71,9 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 			r.With(auth.RequireAuth).Get("/agents/status", agh.Status)
 			r.With(auth.RequireAuth).Post("/agents/start", agh.Start)
 			r.With(auth.RequireAuth).Post("/agents/stop", agh.Stop)
+			r.With(auth.RequireAuth).Get("/agents/{persona_id}/llm-calls", agh.LLMCalls)
+			r.With(auth.RequireAuth).Get("/agents/{persona_id}/tool-executions", agh.ToolExecutions)
+			r.With(auth.RequireAuth).Get("/agents/{persona_id}/stats", agh.Stats)
 		}
 	})
 

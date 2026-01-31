@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAgents } from "../hooks/useAgents";
+import type { AgentStatus } from "../types";
+import AgentActivityPage from "./AgentActivityPage";
 
 const ACTIVE_STATUSES = new Set(["idle", "thinking", "tool_call"]);
 
@@ -8,11 +10,40 @@ function isActiveStatus(status: string): boolean {
 }
 
 export default function AgentDashboard() {
-  const { agents, supervisorRunning, loading, startAgents, stopAgents, refresh } = useAgents();
+  const {
+    agents,
+    supervisorRunning,
+    loading,
+    startAgents,
+    stopAgents,
+    refresh,
+  } = useAgents();
+  const [selectedAgent, setSelectedAgent] = useState<AgentStatus | null>(null);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Keep selected agent's status in sync with refreshed data.
+  useEffect(() => {
+    if (selectedAgent) {
+      const updated = agents.find(
+        (a) => a.persona_id === selectedAgent.persona_id,
+      );
+      if (updated && updated.status !== selectedAgent.status) {
+        setSelectedAgent(updated);
+      }
+    }
+  }, [agents, selectedAgent]);
+
+  if (selectedAgent) {
+    return (
+      <AgentActivityPage
+        agent={selectedAgent}
+        onBack={() => setSelectedAgent(null)}
+      />
+    );
+  }
 
   const active = agents.filter((a) => isActiveStatus(a.status)).length;
   const inactive = agents.length - active;
@@ -70,9 +101,10 @@ export default function AgentDashboard() {
             {agents.map((agent) => {
               const active = isActiveStatus(agent.status);
               return (
-                <div
+                <button
                   key={agent.persona_id}
-                  className={`bg-[#16213e] border rounded-lg p-4 ${
+                  onClick={() => setSelectedAgent(agent)}
+                  className={`bg-[#16213e] border rounded-lg p-4 text-left hover:bg-[#1a2744] transition-colors cursor-pointer ${
                     active ? "border-emerald-500/20" : "border-[#e2b714]/10"
                   }`}
                 >
@@ -91,9 +123,7 @@ export default function AgentDashboard() {
                         </h3>
                         <span
                           className={`text-[10px] uppercase tracking-widest font-mono ${
-                            active
-                              ? "text-emerald-400/60"
-                              : "text-[#a0a0b8]/30"
+                            active ? "text-emerald-400/60" : "text-[#a0a0b8]/30"
                           }`}
                         >
                           {agent.status}
@@ -101,20 +131,23 @@ export default function AgentDashboard() {
                       </div>
                     </div>
 
-                    {agent.channels.length > 0 && (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {agent.channels.map((ch) => (
-                          <span
-                            key={ch}
-                            className="text-[#a0a0b8]/40 text-xs font-mono bg-[#0f3460]/50 px-2 py-0.5 rounded"
-                          >
-                            #{ch}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {agent.channels.length > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          {agent.channels.map((ch) => (
+                            <span
+                              key={ch}
+                              className="text-[#a0a0b8]/40 text-xs font-mono bg-[#0f3460]/50 px-2 py-0.5 rounded"
+                            >
+                              #{ch}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <span className="text-[#a0a0b8]/30 text-xs">&#9656;</span>
+                    </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

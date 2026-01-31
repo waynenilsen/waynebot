@@ -233,26 +233,59 @@ func (a *Actor) recordLLMCall(channelID int64, messages []openai.ChatCompletionM
 		responseJSON = []byte("{}")
 	}
 
-	_, err = a.DB.WriteExec(
+	res, err := a.DB.WriteExec(
 		`INSERT INTO llm_calls (persona_id, channel_id, model, messages_json, response_json, prompt_tokens, completion_tokens)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		a.Persona.ID, channelID, a.Persona.Model, string(messagesJSON), string(responseJSON), resp.PromptTokens, resp.CompletionTokens,
 	)
 	if err != nil {
 		slog.Error("actor: record llm call", "persona", a.Persona.Name, "error", err)
+		return
 	}
+
+	id, _ := res.LastInsertId()
+	a.Hub.Broadcast(ws.Event{
+		Type: "agent_llm_call",
+		Data: map[string]any{
+			"id":                id,
+			"persona_id":        a.Persona.ID,
+			"channel_id":        channelID,
+			"model":             a.Persona.Model,
+			"messages_json":     string(messagesJSON),
+			"response_json":     string(responseJSON),
+			"prompt_tokens":     resp.PromptTokens,
+			"completion_tokens": resp.CompletionTokens,
+			"created_at":        time.Now().UTC().Format(time.RFC3339),
+		},
+	})
 }
 
 // recordToolExecution logs a tool invocation to the tool_executions table.
 func (a *Actor) recordToolExecution(toolName, argsJSON, output, errText string, duration time.Duration) {
-	_, err := a.DB.WriteExec(
+	res, err := a.DB.WriteExec(
 		`INSERT INTO tool_executions (persona_id, tool_name, args_json, output_text, error_text, duration_ms)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		a.Persona.ID, toolName, argsJSON, output, errText, duration.Milliseconds(),
 	)
 	if err != nil {
 		slog.Error("actor: record tool execution", "persona", a.Persona.Name, "tool", toolName, "error", err)
+		return
 	}
+
+	id, _ := res.LastInsertId()
+	a.Hub.Broadcast(ws.Event{
+		Type: "agent_tool_execution",
+		Data: map[string]any{
+			"id":          id,
+			"persona_id":  a.Persona.ID,
+			"tool_name":   toolName,
+			"args_json":   argsJSON,
+			"output_text": output,
+			"error_text":  errText,
+			"duration_ms": duration.Milliseconds(),
+			"created_at":  time.Now().UTC().Format(time.RFC3339),
+		},
+	})
 }
 
 // reverseMessages reverses a slice of messages in place.

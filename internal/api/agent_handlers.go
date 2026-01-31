@@ -2,6 +2,10 @@ package api
 
 import (
 	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
@@ -92,4 +96,148 @@ func (h *AgentHandler) Stop(w http.ResponseWriter, r *http.Request) {
 	h.Supervisor.StopAll()
 
 	WriteJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
+}
+
+type llmCallJSON struct {
+	ID               int64  `json:"id"`
+	PersonaID        int64  `json:"persona_id"`
+	ChannelID        int64  `json:"channel_id"`
+	Model            string `json:"model"`
+	MessagesJSON     string `json:"messages_json"`
+	ResponseJSON     string `json:"response_json"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	CreatedAt        string `json:"created_at"`
+}
+
+func toLLMCallJSON(c model.LLMCall) llmCallJSON {
+	return llmCallJSON{
+		ID:               c.ID,
+		PersonaID:        c.PersonaID,
+		ChannelID:        c.ChannelID,
+		Model:            c.Model,
+		MessagesJSON:     c.MessagesJSON,
+		ResponseJSON:     c.ResponseJSON,
+		PromptTokens:     c.PromptTokens,
+		CompletionTokens: c.CompletionTokens,
+		CreatedAt:        c.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+type toolExecJSON struct {
+	ID         int64  `json:"id"`
+	PersonaID  int64  `json:"persona_id"`
+	ToolName   string `json:"tool_name"`
+	ArgsJSON   string `json:"args_json"`
+	OutputText string `json:"output_text"`
+	ErrorText  string `json:"error_text"`
+	DurationMs int64  `json:"duration_ms"`
+	CreatedAt  string `json:"created_at"`
+}
+
+func toToolExecJSON(e model.ToolExecution) toolExecJSON {
+	return toolExecJSON{
+		ID:         e.ID,
+		PersonaID:  e.PersonaID,
+		ToolName:   e.ToolName,
+		ArgsJSON:   e.ArgsJSON,
+		OutputText: e.OutputText,
+		ErrorText:  e.ErrorText,
+		DurationMs: e.DurationMs,
+		CreatedAt:  e.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+type agentStatsJSON struct {
+	TotalCallsLastHour  int64   `json:"total_calls_last_hour"`
+	TotalTokensLastHour int64   `json:"total_tokens_last_hour"`
+	ErrorCountLastHour  int64   `json:"error_count_last_hour"`
+	AvgResponseMs       float64 `json:"avg_response_ms"`
+}
+
+// LLMCalls returns paginated LLM calls for a persona.
+func (h *AgentHandler) LLMCalls(w http.ResponseWriter, r *http.Request) {
+	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+		return
+	}
+
+	limit, offset := parsePagination(r, 50, 200)
+
+	calls, err := model.ListLLMCalls(h.DB, personaID, limit, offset)
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	out := make([]llmCallJSON, len(calls))
+	for i, c := range calls {
+		out[i] = toLLMCallJSON(c)
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// ToolExecutions returns paginated tool executions for a persona.
+func (h *AgentHandler) ToolExecutions(w http.ResponseWriter, r *http.Request) {
+	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+		return
+	}
+
+	limit, offset := parsePagination(r, 50, 200)
+
+	execs, err := model.ListToolExecutions(h.DB, personaID, limit, offset)
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	out := make([]toolExecJSON, len(execs))
+	for i, e := range execs {
+		out[i] = toToolExecJSON(e)
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// Stats returns summary statistics for a persona.
+func (h *AgentHandler) Stats(w http.ResponseWriter, r *http.Request) {
+	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+		return
+	}
+
+	stats, err := model.GetAgentStats(h.DB, personaID)
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, agentStatsJSON{
+		TotalCallsLastHour:  stats.TotalCallsLastHour,
+		TotalTokensLastHour: stats.TotalTokensLastHour,
+		ErrorCountLastHour:  stats.ErrorCountLastHour,
+		AvgResponseMs:       stats.AvgResponseMs,
+	})
+}
+
+// parsePagination extracts limit and offset from query params with defaults and max bounds.
+func parsePagination(r *http.Request, defaultLimit, maxLimit int) (int, int) {
+	limit := defaultLimit
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= maxLimit {
+			limit = parsed
+		}
+	}
+
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	return limit, offset
 }

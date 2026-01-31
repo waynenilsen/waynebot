@@ -64,3 +64,33 @@ export interface WsEvent {
   type: string;
   data: unknown;
 }
+
+export interface LLMCall {
+  id: number;
+  persona_id: number;
+  channel_id: number;
+  model: string;
+  messages_json: string;
+  response_json: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  created_at: string;
+}
+
+export interface ToolExecution {
+  id: number;
+  persona_id: number;
+  tool_name: string;
+  args_json: string;
+  output_text: string;
+  error_text: string;
+  duration_ms: number;
+  created_at: string;
+}
+
+export interface AgentStatsResponse {
+  total_calls_last_hour: number;
+  total_tokens_last_hour: number;
+  error_count_last_hour: number;
+  avg_response_ms: number;
+}

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useChannels } from "./hooks/useChannels";
+import { useMessages } from "./hooks/useMessages";
 import { useWebSocket } from "./hooks/useWebSocket";
 import LoginPage from "./pages/LoginPage";
 import Layout from "./components/Layout";
 import Sidebar from "./components/Sidebar";
 import ChannelList from "./components/ChannelList";
+import MessageThread from "./components/MessageThread";
+import MessageCompose from "./components/MessageCompose";
 
 function AuthenticatedApp({
   user,
@@ -14,8 +17,10 @@ function AuthenticatedApp({
   user: { id: number; username: string; created_at: string };
   logout: () => Promise<void>;
 }) {
-  const { channels, currentChannelId, selectChannel, createChannel } =
+  const { channels, currentChannel, currentChannelId, selectChannel, createChannel } =
     useChannels();
+  const { messages, loading, hasMore, loadMore, sendMessage } =
+    useMessages(currentChannelId);
   const { connected } = useWebSocket(true);
   const [currentView, setCurrentView] = useState("channels");
 
@@ -50,21 +55,30 @@ function AuthenticatedApp({
           </div>
         )}
 
-        <div className="flex-1 flex items-center justify-center">
-          {currentView === "channels" && currentChannelId ? (
-            <div className="text-[#a0a0b8]/50 text-sm font-mono">
-              # channel view coming soon
-            </div>
-          ) : currentView === "channels" ? (
+        {currentView === "channels" && currentChannel ? (
+          <>
+            <MessageThread
+              messages={messages}
+              loading={loading}
+              hasMore={hasMore}
+              onLoadMore={loadMore}
+              channelName={currentChannel.name}
+            />
+            <MessageCompose onSend={sendMessage} />
+          </>
+        ) : currentView === "channels" ? (
+          <div className="flex-1 flex items-center justify-center">
             <div className="text-[#a0a0b8]/50 text-sm font-mono">
               select a channel to start chatting
             </div>
-          ) : (
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
             <div className="text-[#a0a0b8]/50 text-sm font-mono">
               {currentView} page coming soon
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

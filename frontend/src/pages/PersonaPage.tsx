@@ -48,7 +48,7 @@ export default function PersonaPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-y-auto">
       {/* Header */}
       <div className="px-6 py-4 border-b border-[#e2b714]/10 flex items-center justify-between shrink-0">
         <div>

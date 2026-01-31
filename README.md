@@ -15,6 +15,33 @@ Invite-only with username/password authentication. Registration requires an invi
 
 ## Getting Started
 
+You need two terminals — one for the backend, one for the frontend.
+
+### Backend
+
 ```
 go run ./cmd/waynebot
 ```
+
+Starts the Go server on port **59731**. Configure with environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WAYNEBOT_PORT` | 59731 | HTTP server port |
+| `WAYNEBOT_DB_PATH` | waynebot.db | SQLite database path |
+| `WAYNEBOT_CORS_ORIGINS` | http://localhost:5173 | Allowed CORS origins |
+| `WAYNEBOT_OPENROUTER_KEY` | | LLM API key (OpenRouter) |
+
+### Frontend
+
+```
+cd frontend
+npm install
+npm run dev
+```
+
+Starts the Vite dev server on port **53461**. The dev server proxies `/api/*` and `/ws` requests to the backend automatically, so everything works from a single URL.
+
+### Open the app
+
+Visit **http://localhost:53461**. The first user can register without an invite code (bootstrap mode). After that, registration requires an invite from an existing user.

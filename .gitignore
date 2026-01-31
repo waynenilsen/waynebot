@@ -41,3 +41,7 @@ Thumbs.db
 
 # Notes
 .notes/
+
+*.db
+*.db-shm
+*.db-wal

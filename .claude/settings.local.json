@@ -3,7 +3,8 @@
     "allow": [
       "WebSearch",
       "Bash(git -C /Users/waynenilsen/git/waynebot log --oneline --all)",
-      "Bash(go version:*)"
+      "Bash(go version:*)",
+      "Bash(grep:*)"
     ]
   }
 }

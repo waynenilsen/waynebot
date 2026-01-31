@@ -34,3 +34,10 @@ when using crumbler use it as ./crumbler its a symlink to a lib we have use ./cr
 the plans are not set in stone if they don't make sense go ahead into another direction :)
 
 when you finish a chunk of work, format the code, use git add . to add everything (yes everything) and git commit to commit use conventional commits format and use git push origin HEAD to push it up
+
+## running the app locally
+
+backend: `go run ./cmd/waynebot` — listens on :59731
+frontend: `cd frontend && npm run dev` — listens on :53461, proxies /api and /ws to the backend via vite.config.ts
+open http://localhost:53461 to use the app
+first user can register without an invite code (bootstrap mode)

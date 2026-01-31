@@ -71,9 +71,7 @@ describe("MessageThread", () => {
 
   it("shows load more button when hasMore is true", () => {
     scenario({ hasMore: true });
-    expect(
-      screen.getByText("load older messages"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("load older messages")).toBeInTheDocument();
   });
 
   it("calls onLoadMore when load more button is clicked", async () => {
@@ -90,8 +88,6 @@ describe("MessageThread", () => {
 
   it("does not show load more when hasMore is false", () => {
     scenario({ hasMore: false });
-    expect(
-      screen.queryByText("load older messages"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("load older messages")).not.toBeInTheDocument();
   });
 });

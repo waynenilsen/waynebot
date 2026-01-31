@@ -51,7 +51,9 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
               {children}
             </ol>
           ),
-          p: ({ children }) => <p className="my-1 first:mt-0 last:mb-0">{children}</p>,
+          p: ({ children }) => (
+            <p className="my-1 first:mt-0 last:mb-0">{children}</p>
+          ),
         }}
       >
         {content}

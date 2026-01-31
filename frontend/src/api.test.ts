@@ -48,10 +48,7 @@ describe("api", () => {
 
   describe("error handling", () => {
     it("throws ApiError with message from response body", async () => {
-      vi.stubGlobal(
-        "fetch",
-        mockFetch({ error: "invalid credentials" }, 401),
-      );
+      vi.stubGlobal("fetch", mockFetch({ error: "invalid credentials" }, 401));
 
       await expect(login("alice", "wrong")).rejects.toThrow(ApiError);
       await expect(login("alice", "wrong")).rejects.toThrow(

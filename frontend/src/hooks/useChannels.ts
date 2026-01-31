@@ -6,7 +6,10 @@ export function useChannels() {
   const { state, setChannels, setCurrentChannel } = useApp();
 
   useEffect(() => {
-    api.getChannels().then(setChannels).catch(() => {});
+    api
+      .getChannels()
+      .then(setChannels)
+      .catch(() => {});
   }, [setChannels]);
 
   const selectChannel = useCallback(
@@ -27,9 +30,8 @@ export function useChannels() {
 
   return {
     channels: state.channels,
-    currentChannel: state.channels.find(
-      (c) => c.id === state.currentChannelId,
-    ) ?? null,
+    currentChannel:
+      state.channels.find((c) => c.id === state.currentChannelId) ?? null,
     currentChannelId: state.currentChannelId,
     selectChannel,
     createChannel,

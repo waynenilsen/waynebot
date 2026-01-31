@@ -82,7 +82,9 @@ describe("useChannels", () => {
 
     await waitFor(() => expect(result.current.channels).toHaveLength(2));
 
-    await act(() => result.current.createChannel("new-channel", "A new channel"));
+    await act(() =>
+      result.current.createChannel("new-channel", "A new channel"),
+    );
 
     expect(mockApi.createChannel).toHaveBeenCalledWith(
       "new-channel",

@@ -25,8 +25,7 @@ function scenario(overrides?: {
   onCreate?: (name: string, description: string) => Promise<void>;
 }) {
   const onSelect = overrides?.onSelect ?? vi.fn();
-  const onCreate =
-    overrides?.onCreate ?? vi.fn(() => Promise.resolve());
+  const onCreate = overrides?.onCreate ?? vi.fn(() => Promise.resolve());
   const user = userEvent.setup();
 
   render(
@@ -72,7 +71,9 @@ describe("ChannelList", () => {
 
   it("toggles create form on + click", async () => {
     const s = scenario();
-    expect(screen.queryByPlaceholderText("channel-name")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("channel-name"),
+    ).not.toBeInTheDocument();
 
     await s.user.click(screen.getByTitle("New channel"));
     expect(screen.getByPlaceholderText("channel-name")).toBeInTheDocument();
@@ -99,10 +100,7 @@ describe("ChannelList", () => {
     const s = scenario();
 
     await s.user.click(screen.getByTitle("New channel"));
-    await s.user.type(
-      screen.getByPlaceholderText("channel-name"),
-      "test",
-    );
+    await s.user.type(screen.getByPlaceholderText("channel-name"), "test");
     await s.user.click(screen.getByText("Create"));
 
     expect(

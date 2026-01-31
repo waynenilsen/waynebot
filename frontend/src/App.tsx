@@ -4,6 +4,9 @@ import { useChannels } from "./hooks/useChannels";
 import { useMessages } from "./hooks/useMessages";
 import { useWebSocket } from "./hooks/useWebSocket";
 import LoginPage from "./pages/LoginPage";
+import PersonaPage from "./pages/PersonaPage";
+import AgentDashboard from "./pages/AgentDashboard";
+import InvitePage from "./pages/InvitePage";
 import Layout from "./components/Layout";
 import Sidebar from "./components/Sidebar";
 import ChannelList from "./components/ChannelList";
@@ -17,8 +20,13 @@ function AuthenticatedApp({
   user: { id: number; username: string; created_at: string };
   logout: () => Promise<void>;
 }) {
-  const { channels, currentChannel, currentChannelId, selectChannel, createChannel } =
-    useChannels();
+  const {
+    channels,
+    currentChannel,
+    currentChannelId,
+    selectChannel,
+    createChannel,
+  } = useChannels();
   const { messages, loading, hasMore, loadMore, sendMessage } =
     useMessages(currentChannelId);
   const { connected } = useWebSocket(true);
@@ -72,13 +80,13 @@ function AuthenticatedApp({
               select a channel to start chatting
             </div>
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-[#a0a0b8]/50 text-sm font-mono">
-              {currentView} page coming soon
-            </div>
-          </div>
-        )}
+        ) : currentView === "personas" ? (
+          <PersonaPage />
+        ) : currentView === "agents" ? (
+          <AgentDashboard />
+        ) : currentView === "invites" ? (
+          <InvitePage />
+        ) : null}
       </div>
     </Layout>
   );

@@ -3,11 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import MessageCompose from "./MessageCompose";
 
-function scenario(overrides?: {
-  onSend?: (content: string) => Promise<void>;
-}) {
-  const onSend =
-    overrides?.onSend ?? vi.fn(() => Promise.resolve());
+function scenario(overrides?: { onSend?: (content: string) => Promise<void> }) {
+  const onSend = overrides?.onSend ?? vi.fn(() => Promise.resolve());
   const user = userEvent.setup();
 
   render(<MessageCompose onSend={onSend} />);
@@ -73,10 +70,7 @@ describe("MessageCompose", () => {
 
   it("does not send whitespace-only messages", async () => {
     const s = scenario();
-    await s.user.type(
-      screen.getByPlaceholderText("type a message..."),
-      "   ",
-    );
+    await s.user.type(screen.getByPlaceholderText("type a message..."), "   ");
     expect(screen.getByText("send")).toBeDisabled();
   });
 });

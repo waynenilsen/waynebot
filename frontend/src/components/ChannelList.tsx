@@ -106,9 +106,7 @@ export default function ChannelList({
       </div>
 
       {channels.length === 0 && !showForm && (
-        <p className="px-4 text-[#a0a0b8]/30 text-xs italic">
-          no channels yet
-        </p>
+        <p className="px-4 text-[#a0a0b8]/30 text-xs italic">no channels yet</p>
       )}
     </div>
   );

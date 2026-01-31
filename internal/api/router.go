@@ -10,10 +10,11 @@ import (
 
 	"github.com/waynenilsen/waynebot/internal/auth"
 	"github.com/waynenilsen/waynebot/internal/db"
+	"github.com/waynenilsen/waynebot/internal/ws"
 )
 
 // NewRouter creates the main Chi router with all middleware and route groups.
-func NewRouter(database *db.DB, corsOrigins []string) http.Handler {
+func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -34,9 +35,10 @@ func NewRouter(database *db.DB, corsOrigins []string) http.Handler {
 	})
 
 	ah := &AuthHandler{DB: database}
-	ch := &ChannelHandler{DB: database}
+	ch := &ChannelHandler{DB: database, Hub: hub}
 	ph := &PersonaHandler{DB: database}
 	ih := &InviteHandler{DB: database}
+	wh := &WsHandler{DB: database, Hub: hub}
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/register", ah.Register)
@@ -56,7 +58,11 @@ func NewRouter(database *db.DB, corsOrigins []string) http.Handler {
 
 		r.With(auth.RequireAuth).Post("/invites", ih.CreateInvite)
 		r.With(auth.RequireAuth).Get("/invites", ih.ListInvites)
+
+		r.With(auth.RequireAuth).Post("/ws/ticket", wh.CreateTicket)
 	})
+
+	r.Get("/ws", wh.Upgrade)
 
 	return r
 }

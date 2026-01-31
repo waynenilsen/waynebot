@@ -11,6 +11,7 @@ import (
 	"github.com/waynenilsen/waynebot/internal/auth"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
+	"github.com/waynenilsen/waynebot/internal/ws"
 )
 
 func openTestDB(t *testing.T) *db.DB {
@@ -25,7 +26,10 @@ func openTestDB(t *testing.T) *db.DB {
 
 func newTestRouter(t *testing.T, d *db.DB) http.Handler {
 	t.Helper()
-	return api.NewRouter(d, []string{"*"})
+	hub := ws.NewHub()
+	go hub.Run()
+	t.Cleanup(func() { hub.Stop() })
+	return api.NewRouter(d, []string{"*"}, hub)
 }
 
 func doJSON(t *testing.T, router http.Handler, method, path, body string, headers ...string) *httptest.ResponseRecorder {

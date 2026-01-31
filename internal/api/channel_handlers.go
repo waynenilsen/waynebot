@@ -11,11 +11,13 @@ import (
 
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
+	"github.com/waynenilsen/waynebot/internal/ws"
 )
 
 // ChannelHandler handles channel and message HTTP endpoints.
 type ChannelHandler struct {
-	DB *db.DB
+	DB  *db.DB
+	Hub *ws.Hub
 }
 
 type createChannelRequest struct {
@@ -207,6 +209,13 @@ func (h *ChannelHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "internal error")
 		return
+	}
+
+	if h.Hub != nil {
+		h.Hub.Broadcast(ws.Event{
+			Type: "new_message",
+			Data: toMessageJSON(msg),
+		})
 	}
 
 	WriteJSON(w, http.StatusCreated, toMessageJSON(msg))

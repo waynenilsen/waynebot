@@ -12,6 +12,7 @@ import (
 	"github.com/waynenilsen/waynebot/internal/api"
 	"github.com/waynenilsen/waynebot/internal/config"
 	"github.com/waynenilsen/waynebot/internal/db"
+	"github.com/waynenilsen/waynebot/internal/ws"
 )
 
 func main() {
@@ -29,7 +30,10 @@ func main() {
 	}
 	log.Printf("database ready, schema version %d", v)
 
-	router := api.NewRouter(database, cfg.CORSOrigins)
+	hub := ws.NewHub()
+	go hub.Run()
+
+	router := api.NewRouter(database, cfg.CORSOrigins, hub)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -49,6 +53,8 @@ func main() {
 
 	<-ctx.Done()
 	log.Println("shutting down...")
+
+	hub.Stop()
 
 	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Printf("shutdown error: %v", err)

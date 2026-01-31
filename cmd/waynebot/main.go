@@ -12,8 +12,10 @@ import (
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/api"
 	"github.com/waynenilsen/waynebot/internal/config"
+	"github.com/waynenilsen/waynebot/internal/connector"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/llm"
+	"github.com/waynenilsen/waynebot/internal/model"
 	"github.com/waynenilsen/waynebot/internal/tools"
 	"github.com/waynenilsen/waynebot/internal/ws"
 )
@@ -45,6 +47,27 @@ func main() {
 	}
 	log.Println("agent supervisor started")
 
+	connectors := connector.NewRegistry()
+	if cfg.IMAPHost != "" {
+		ch, err := model.GetChannelByName(database, cfg.IMAPChannel)
+		if err != nil {
+			ch, err = model.CreateChannel(database, cfg.IMAPChannel, "incoming email")
+			if err != nil {
+				log.Fatalf("failed to create email channel: %v", err)
+			}
+		}
+		emailConn := connector.NewEmailConnector(connector.EmailConfig{
+			Host:      cfg.IMAPHost,
+			Port:      cfg.IMAPPort,
+			User:      cfg.IMAPUser,
+			Pass:      cfg.IMAPPass,
+			ChannelID: ch.ID,
+		}, connector.NewTLSIMAPClient(), database, hub)
+		connectors.Register(emailConn)
+		log.Printf("email connector registered for %s", cfg.IMAPUser)
+	}
+	connectors.StartAll()
+
 	router := api.NewRouter(database, cfg.CORSOrigins, hub, supervisor)
 
 	srv := &http.Server{
@@ -65,6 +88,9 @@ func main() {
 
 	<-ctx.Done()
 	log.Println("shutting down...")
+
+	connectors.StopAll()
+	log.Println("connectors stopped")
 
 	supervisor.StopAll()
 	log.Println("agent supervisor stopped")

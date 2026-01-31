@@ -115,6 +115,25 @@ CREATE TABLE tool_executions (
 );
 `,
 	},
+	{
+		Version: 2,
+		SQL: `
+-- Widen author_type CHECK to include 'connector'.
+CREATE TABLE messages_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel_id INTEGER NOT NULL REFERENCES channels(id),
+    author_id INTEGER NOT NULL,
+    author_type TEXT NOT NULL CHECK(author_type IN ('human', 'agent', 'connector')),
+    author_name TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO messages_new SELECT * FROM messages;
+DROP TABLE messages;
+ALTER TABLE messages_new RENAME TO messages;
+CREATE INDEX idx_messages_channel_id ON messages(channel_id, id);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

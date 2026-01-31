@@ -14,10 +14,11 @@ type Config struct {
 
 	CORSOrigins []string
 
-	IMAPHost string
-	IMAPPort int
-	IMAPUser string
-	IMAPPass string
+	IMAPHost    string
+	IMAPPort    int
+	IMAPUser    string
+	IMAPPass    string
+	IMAPChannel string
 
 	OpenRouterKey string
 }
@@ -31,10 +32,11 @@ func Load() Config {
 
 		CORSOrigins: envList("WAYNEBOT_CORS_ORIGINS", []string{"http://localhost:5173"}),
 
-		IMAPHost: envStr("WAYNEBOT_IMAP_HOST", ""),
-		IMAPPort: envInt("WAYNEBOT_IMAP_PORT", 993),
-		IMAPUser: envStr("WAYNEBOT_IMAP_USER", ""),
-		IMAPPass: envStr("WAYNEBOT_IMAP_PASS", ""),
+		IMAPHost:    envStr("WAYNEBOT_IMAP_HOST", ""),
+		IMAPPort:    envInt("WAYNEBOT_IMAP_PORT", 993),
+		IMAPUser:    envStr("WAYNEBOT_IMAP_USER", ""),
+		IMAPPass:    envStr("WAYNEBOT_IMAP_PASS", ""),
+		IMAPChannel: envStr("WAYNEBOT_IMAP_CHANNEL", "email"),
 
 		OpenRouterKey: envStr("WAYNEBOT_OPENROUTER_KEY", ""),
 	}

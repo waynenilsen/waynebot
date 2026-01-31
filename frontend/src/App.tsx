@@ -118,7 +118,7 @@ function AuthenticatedApp({
           />
         }
       >
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* WebSocket reconnection indicator */}
           {!connected && (
             <div className="bg-yellow-900/30 border-b border-yellow-600/20 px-4 py-1.5 text-yellow-400 text-xs font-mono flex items-center gap-2">

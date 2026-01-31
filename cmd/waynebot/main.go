@@ -97,6 +97,10 @@ func main() {
 	// Session and ws_ticket cleanup goroutine.
 	go runCleanup(ctx, database)
 
+	archiver := &agent.Archiver{DB: database, ArchiveDir: cfg.ArchiveDir}
+	go archiver.Run(ctx)
+	slog.Info("archiver started", "archive_dir", cfg.ArchiveDir)
+
 	go func() {
 		slog.Info("listening", "port", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

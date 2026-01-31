@@ -42,6 +42,9 @@ Thumbs.db
 # Notes
 .notes/
 
+# Archives (LLM call/tool execution purge output)
+archives/
+
 *.db
 *.db-shm
 *.db-wal

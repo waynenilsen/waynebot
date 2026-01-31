@@ -21,6 +21,8 @@ type Config struct {
 	IMAPChannel string
 
 	OpenRouterKey string
+
+	ArchiveDir string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -39,6 +41,8 @@ func Load() Config {
 		IMAPChannel: envStr("WAYNEBOT_IMAP_CHANNEL", "email"),
 
 		OpenRouterKey: envStr("WAYNEBOT_OPENROUTER_KEY", ""),
+
+		ArchiveDir: envStr("WAYNEBOT_ARCHIVE_DIR", "./archives"),
 	}
 	return c
 }

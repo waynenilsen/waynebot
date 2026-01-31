@@ -148,7 +148,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 			return
 		}
 
-		a.recordLLMCall(ch.ID, resp)
+		a.recordLLMCall(ch.ID, messages, resp)
 
 		if len(resp.ToolCalls) == 0 {
 			if resp.Content != "" {
@@ -219,12 +219,24 @@ func (a *Actor) postMessage(ch model.Channel, content string) {
 	})
 }
 
-// recordLLMCall logs token usage to the llm_calls table.
-func (a *Actor) recordLLMCall(channelID int64, resp llm.Response) {
-	_, err := a.DB.WriteExec(
+// recordLLMCall logs the full request messages and response to the llm_calls table.
+func (a *Actor) recordLLMCall(channelID int64, messages []openai.ChatCompletionMessageParamUnion, resp llm.Response) {
+	messagesJSON, err := json.Marshal(messages)
+	if err != nil {
+		slog.Error("actor: marshal messages", "persona", a.Persona.Name, "error", err)
+		messagesJSON = []byte("[]")
+	}
+
+	responseJSON, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("actor: marshal response", "persona", a.Persona.Name, "error", err)
+		responseJSON = []byte("{}")
+	}
+
+	_, err = a.DB.WriteExec(
 		`INSERT INTO llm_calls (persona_id, channel_id, model, messages_json, response_json, prompt_tokens, completion_tokens)
-		 VALUES (?, ?, ?, '[]', '{}', ?, ?)`,
-		a.Persona.ID, channelID, a.Persona.Model, resp.PromptTokens, resp.CompletionTokens,
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		a.Persona.ID, channelID, a.Persona.Model, string(messagesJSON), string(responseJSON), resp.PromptTokens, resp.CompletionTokens,
 	)
 	if err != nil {
 		slog.Error("actor: record llm call", "persona", a.Persona.Name, "error", err)

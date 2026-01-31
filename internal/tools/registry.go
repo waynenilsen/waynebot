@@ -44,6 +44,14 @@ func (r *Registry) Call(ctx context.Context, name string, args json.RawMessage) 
 	return fn(ctx, args)
 }
 
+// RegisterDefaults registers all built-in tools using the given sandbox config.
+func (r *Registry) RegisterDefaults(cfg *SandboxConfig) {
+	r.Register("shell_exec", ShellExec(cfg))
+	r.Register("file_read", FileRead(cfg))
+	r.Register("file_write", FileWrite(cfg))
+	r.Register("http_fetch", HTTPFetch(cfg))
+}
+
 // Names returns the sorted list of registered tool names.
 func (r *Registry) Names() []string {
 	r.mu.RLock()

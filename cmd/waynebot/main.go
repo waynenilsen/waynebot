@@ -45,6 +45,14 @@ func main() {
 
 	llmClient := llm.NewClient(cfg.OpenRouterKey)
 	toolsRegistry := tools.NewRegistry()
+	toolsRegistry.RegisterDefaults(&tools.SandboxConfig{
+		BaseDir:      cfg.SandboxDir,
+		BlockedHosts: tools.DefaultBlockedHosts(),
+		AllowedCommands: []string{
+			"ls", "cat", "head", "tail", "grep", "find", "wc",
+			"sort", "uniq", "diff", "echo", "date", "pwd",
+		},
+	})
 	supervisor := agent.NewSupervisor(database, hub, llmClient, toolsRegistry)
 
 	if err := supervisor.StartAll(); err != nil {

@@ -4,7 +4,7 @@ import { useApp } from "../store/AppContext";
 import { useErrors } from "../store/ErrorContext";
 
 export function useChannels() {
-  const { state, setChannels, setCurrentChannel } = useApp();
+  const { state, setChannels, setCurrentChannel, clearUnread } = useApp();
   const { pushError } = useErrors();
 
   useEffect(() => {
@@ -17,8 +17,11 @@ export function useChannels() {
   const selectChannel = useCallback(
     (id: number) => {
       setCurrentChannel(id);
+      clearUnread(id);
+      // Fire-and-forget: tell the server we've read this channel.
+      api.markChannelRead(id).catch(() => {});
     },
-    [setCurrentChannel],
+    [setCurrentChannel, clearUnread],
   );
 
   const createChannel = useCallback(

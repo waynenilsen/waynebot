@@ -42,6 +42,7 @@ const general: Channel = {
   name: "general",
   description: "General chat",
   created_at: "2024-01-01T00:00:00Z",
+  unread_count: 0,
 };
 
 const msg: Message = {

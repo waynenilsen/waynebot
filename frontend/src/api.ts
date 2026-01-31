@@ -119,6 +119,15 @@ export async function postMessage(
   });
 }
 
+export async function markChannelRead(
+  channelId: number,
+): Promise<{ last_read_message_id: number }> {
+  return apiFetch<{ last_read_message_id: number }>(
+    `/api/channels/${channelId}/read`,
+    { method: "POST" },
+  );
+}
+
 export async function getPersonas(): Promise<Persona[]> {
   return apiFetch<Persona[]>("/api/personas");
 }

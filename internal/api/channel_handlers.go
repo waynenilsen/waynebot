@@ -32,6 +32,11 @@ type channelJSON struct {
 	CreatedAt   string `json:"created_at"`
 }
 
+type channelWithUnreadJSON struct {
+	channelJSON
+	UnreadCount int64 `json:"unread_count"`
+}
+
 func toChannelJSON(ch model.Channel) channelJSON {
 	return channelJSON{
 		ID:          ch.ID,
@@ -67,16 +72,25 @@ func toMessageJSON(m model.Message) messageJSON {
 	}
 }
 
-// ListChannels returns all channels.
+// ListChannels returns all channels with unread counts for the authenticated user.
 func (h *ChannelHandler) ListChannels(w http.ResponseWriter, r *http.Request) {
 	channels, err := model.ListChannels(h.DB)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	out := make([]channelJSON, len(channels))
+
+	var counts map[int64]int64
+	if user := GetUser(r); user != nil {
+		counts, _ = model.GetUnreadCounts(h.DB, user.ID)
+	}
+
+	out := make([]channelWithUnreadJSON, len(channels))
 	for i, ch := range channels {
-		out[i] = toChannelJSON(ch)
+		out[i] = channelWithUnreadJSON{
+			channelJSON: toChannelJSON(ch),
+			UnreadCount: counts[ch.ID],
+		}
 	}
 	WriteJSON(w, http.StatusOK, out)
 }
@@ -219,4 +233,32 @@ func (h *ChannelHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusCreated, toMessageJSON(msg))
+}
+
+// MarkRead updates the user's read position for a channel to the latest message.
+func (h *ChannelHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
+	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+		return
+	}
+
+	user := GetUser(r)
+	if user == nil {
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	latestID, err := model.GetLatestMessageID(h.DB, channelID)
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	if err := model.UpdateReadPosition(h.DB, user.ID, channelID, latestID); err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]int64{"last_read_message_id": latestID})
 }

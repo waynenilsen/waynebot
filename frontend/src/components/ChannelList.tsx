@@ -84,6 +84,8 @@ export default function ChannelList({
       <div className="space-y-px">
         {channels.map((ch) => {
           const active = ch.id === currentChannelId;
+          const unread = ch.unread_count ?? 0;
+          const hasUnread = unread > 0 && !active;
           return (
             <button
               key={ch.id}
@@ -91,7 +93,9 @@ export default function ChannelList({
               className={`w-full text-left px-4 py-1.5 text-sm flex items-center transition-colors cursor-pointer ${
                 active
                   ? "text-[#e2b714] bg-[#e2b714]/8 border-l-2 border-[#e2b714]"
-                  : "text-[#a0a0b8]/70 hover:text-[#a0a0b8] hover:bg-white/3 border-l-2 border-transparent"
+                  : hasUnread
+                    ? "text-white hover:bg-white/3 border-l-2 border-transparent font-semibold"
+                    : "text-[#a0a0b8]/70 hover:text-[#a0a0b8] hover:bg-white/3 border-l-2 border-transparent"
               }`}
             >
               <span
@@ -99,7 +103,12 @@ export default function ChannelList({
               >
                 #
               </span>
-              <span className="truncate">{ch.name}</span>
+              <span className="truncate flex-1">{ch.name}</span>
+              {hasUnread && (
+                <span className="ml-auto flex-shrink-0 bg-[#e2b714] text-[#0a0a23] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
             </button>
           );
         })}

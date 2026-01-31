@@ -5,10 +5,16 @@ import type { Message, WsEvent } from "../types";
 import { useApp } from "../store/AppContext";
 
 export function useWebSocket(authenticated: boolean) {
-  const { addMessage } = useApp();
+  const { state, addMessage, incrementUnread } = useApp();
   const [connected, setConnected] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
   const connRef = useRef<ReturnType<typeof connectWs> | null>(null);
+  const currentChannelRef = useRef<number | null>(null);
+  const userIdRef = useRef<number | null>(null);
+
+  // Keep refs in sync without triggering reconnection.
+  currentChannelRef.current = state.currentChannelId;
+  userIdRef.current = state.user?.id ?? null;
 
   useEffect(() => {
     if (!authenticated) {
@@ -23,7 +29,16 @@ export function useWebSocket(authenticated: boolean) {
     const conn = connectWs(
       (event: WsEvent) => {
         if (event.type === "new_message") {
-          addMessage(event.data as Message);
+          const msg = event.data as Message;
+          addMessage(msg);
+          // Increment unread if message is in a different channel than the active one
+          // and was not sent by the current user.
+          if (
+            msg.channel_id !== currentChannelRef.current &&
+            msg.author_id !== userIdRef.current
+          ) {
+            incrementUnread(msg.channel_id);
+          }
         }
       },
       (state: ConnectionState) => {
@@ -42,7 +57,7 @@ export function useWebSocket(authenticated: boolean) {
     return () => {
       conn.close();
     };
-  }, [authenticated, addMessage]);
+  }, [authenticated, addMessage, incrementUnread]);
 
   return { connected, wasConnected };
 }

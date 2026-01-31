@@ -9,6 +9,7 @@ const general: Channel = {
   name: "general",
   description: "General chat",
   created_at: "2024-01-01T00:00:00Z",
+  unread_count: 0,
 };
 
 const random: Channel = {
@@ -16,6 +17,7 @@ const random: Channel = {
   name: "random",
   description: "Random stuff",
   created_at: "2024-01-01T00:00:00Z",
+  unread_count: 0,
 };
 
 function scenario(overrides?: {

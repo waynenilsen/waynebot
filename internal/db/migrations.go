@@ -134,6 +134,18 @@ ALTER TABLE messages_new RENAME TO messages;
 CREATE INDEX idx_messages_channel_id ON messages(channel_id, id);
 `,
 	},
+	{
+		Version: 3,
+		SQL: `
+CREATE TABLE read_positions (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    last_read_message_id INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, channel_id)
+);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

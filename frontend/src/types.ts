@@ -9,6 +9,7 @@ export interface Channel {
   name: string;
   description: string;
   created_at: string;
+  unread_count: number;
 }
 
 export interface Message {

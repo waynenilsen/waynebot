@@ -54,6 +54,7 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		r.With(auth.RequireAuth).Post("/channels", ch.CreateChannel)
 		r.With(auth.RequireAuth).Get("/channels/{id}/messages", ch.GetMessages)
 		r.With(auth.RequireAuth).Post("/channels/{id}/messages", ch.PostMessage)
+		r.With(auth.RequireAuth).Post("/channels/{id}/read", ch.MarkRead)
 
 		r.With(auth.RequireAuth).Get("/personas", ph.ListPersonas)
 		r.With(auth.RequireAuth).Post("/personas", ph.CreatePersona)

@@ -10,6 +10,7 @@ import type { Channel } from "../types";
 vi.mock("../api", () => ({
   getChannels: vi.fn(),
   createChannel: vi.fn(),
+  markChannelRead: vi.fn(() => Promise.resolve({ last_read_message_id: 0 })),
 }));
 
 import * as api from "../api";
@@ -20,6 +21,7 @@ const general: Channel = {
   name: "general",
   description: "General chat",
   created_at: "2024-01-01T00:00:00Z",
+  unread_count: 0,
 };
 
 const random: Channel = {
@@ -27,6 +29,7 @@ const random: Channel = {
   name: "random",
   description: "Random stuff",
   created_at: "2024-01-01T00:00:00Z",
+  unread_count: 0,
 };
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -80,6 +83,7 @@ describe("useChannels", () => {
       name: "new-channel",
       description: "A new channel",
       created_at: "2024-01-01T00:00:00Z",
+      unread_count: 0,
     };
     mockApi.createChannel.mockResolvedValue(newChannel);
 

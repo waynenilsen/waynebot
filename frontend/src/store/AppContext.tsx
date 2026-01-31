@@ -20,7 +20,9 @@ type AppAction =
   | { type: "SET_CHANNELS"; channels: Channel[] }
   | { type: "SET_CURRENT_CHANNEL"; channelId: number | null }
   | { type: "SET_MESSAGES"; channelId: number; messages: Message[] }
-  | { type: "ADD_MESSAGE"; message: Message };
+  | { type: "ADD_MESSAGE"; message: Message }
+  | { type: "INCREMENT_UNREAD"; channelId: number }
+  | { type: "CLEAR_UNREAD"; channelId: number };
 
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -44,6 +46,22 @@ function reducer(state: AppState, action: AppAction): AppState {
         messages: { ...state.messages, [chId]: [...existing, action.message] },
       };
     }
+    case "INCREMENT_UNREAD":
+      return {
+        ...state,
+        channels: state.channels.map((ch) =>
+          ch.id === action.channelId
+            ? { ...ch, unread_count: (ch.unread_count ?? 0) + 1 }
+            : ch,
+        ),
+      };
+    case "CLEAR_UNREAD":
+      return {
+        ...state,
+        channels: state.channels.map((ch) =>
+          ch.id === action.channelId ? { ...ch, unread_count: 0 } : ch,
+        ),
+      };
   }
 }
 
@@ -54,6 +72,8 @@ interface AppContextValue {
   setCurrentChannel: (channelId: number | null) => void;
   setMessages: (channelId: number, messages: Message[]) => void;
   addMessage: (message: Message) => void;
+  incrementUnread: (channelId: number) => void;
+  clearUnread: (channelId: number) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -90,6 +110,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (message: Message) => dispatch({ type: "ADD_MESSAGE", message }),
     [],
   );
+  const incrementUnread = useCallback(
+    (channelId: number) => dispatch({ type: "INCREMENT_UNREAD", channelId }),
+    [],
+  );
+  const clearUnread = useCallback(
+    (channelId: number) => dispatch({ type: "CLEAR_UNREAD", channelId }),
+    [],
+  );
 
   const value = useMemo(
     () => ({
@@ -99,8 +127,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentChannel,
       setMessages,
       addMessage,
+      incrementUnread,
+      clearUnread,
     }),
-    [state, setUser, setChannels, setCurrentChannel, setMessages, addMessage],
+    [
+      state,
+      setUser,
+      setChannels,
+      setCurrentChannel,
+      setMessages,
+      addMessage,
+      incrementUnread,
+      clearUnread,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

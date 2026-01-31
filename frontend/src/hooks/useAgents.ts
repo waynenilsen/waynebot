@@ -5,6 +5,7 @@ import { useErrors } from "../store/ErrorContext";
 
 interface UseAgents {
   agents: AgentStatus[];
+  supervisorRunning: boolean;
   loading: boolean;
   startAgents: () => Promise<void>;
   stopAgents: () => Promise<void>;
@@ -13,6 +14,7 @@ interface UseAgents {
 
 export function useAgents(): UseAgents {
   const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const [supervisorRunning, setSupervisorRunning] = useState(false);
   const [loading, setLoading] = useState(false);
   const { pushError } = useErrors();
 
@@ -20,7 +22,8 @@ export function useAgents(): UseAgents {
     setLoading(true);
     try {
       const data = await api.getAgentStatus();
-      setAgents(data);
+      setAgents(data.agents);
+      setSupervisorRunning(data.supervisor_running);
     } catch (err) {
       pushError(
         `Failed to load agents: ${err instanceof Error ? err.message : "unknown error"}`,
@@ -52,5 +55,5 @@ export function useAgents(): UseAgents {
     }
   }, [refresh, pushError]);
 
-  return { agents, loading, startAgents, stopAgents, refresh };
+  return { agents, supervisorRunning, loading, startAgents, stopAgents, refresh };
 }

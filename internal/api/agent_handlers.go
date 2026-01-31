@@ -21,6 +21,11 @@ type agentStatusEntry struct {
 	Channels    []string `json:"channels"`
 }
 
+type agentStatusResponse struct {
+	SupervisorRunning bool               `json:"supervisor_running"`
+	Agents            []agentStatusEntry `json:"agents"`
+}
+
 // Status returns the status of all persona actors.
 func (h *AgentHandler) Status(w http.ResponseWriter, r *http.Request) {
 	personas, err := model.ListPersonas(h.DB)
@@ -56,7 +61,10 @@ func (h *AgentHandler) Status(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	WriteJSON(w, http.StatusOK, entries)
+	WriteJSON(w, http.StatusOK, agentStatusResponse{
+		SupervisorRunning: h.Supervisor.Running(),
+		Agents:            entries,
+	})
 }
 
 // Start starts the supervisor and all persona actors.

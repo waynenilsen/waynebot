@@ -1,5 +1,5 @@
 import type {
-  AgentStatus,
+  AgentStatusResponse,
   AuthResponse,
   Channel,
   Invite,
@@ -10,12 +10,11 @@ import type {
 import { clearToken, getToken, setToken } from "./utils/token";
 
 class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-  ) {
+  status: number;
+  constructor(message: string, status: number) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 }
 
@@ -155,8 +154,8 @@ export async function createInvite(): Promise<Invite> {
   return apiFetch<Invite>("/api/invites", { method: "POST" });
 }
 
-export async function getAgentStatus(): Promise<AgentStatus[]> {
-  return apiFetch<AgentStatus[]>("/api/agents/status");
+export async function getAgentStatus(): Promise<AgentStatusResponse> {
+  return apiFetch<AgentStatusResponse>("/api/agents/status");
 }
 
 export async function startAgents(): Promise<void> {

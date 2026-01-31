@@ -56,10 +56,13 @@ func TestAgentStatusEmpty(t *testing.T) {
 		t.Fatalf("status = %d, want 200, body: %s", rec.Code, rec.Body.String())
 	}
 
-	var entries []json.RawMessage
-	json.NewDecoder(rec.Body).Decode(&entries)
-	if len(entries) != 0 {
-		t.Errorf("expected 0 entries, got %d", len(entries))
+	var resp struct {
+		SupervisorRunning bool              `json:"supervisor_running"`
+		Agents            []json.RawMessage `json:"agents"`
+	}
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if len(resp.Agents) != 0 {
+		t.Errorf("expected 0 entries, got %d", len(resp.Agents))
 	}
 }
 
@@ -83,22 +86,25 @@ func TestAgentStatusWithPersonas(t *testing.T) {
 		t.Fatalf("status = %d, want 200, body: %s", rec.Code, rec.Body.String())
 	}
 
-	var entries []struct {
-		PersonaID   int64    `json:"persona_id"`
-		PersonaName string   `json:"persona_name"`
-		Status      string   `json:"status"`
-		Channels    []string `json:"channels"`
+	var resp struct {
+		SupervisorRunning bool `json:"supervisor_running"`
+		Agents            []struct {
+			PersonaID   int64    `json:"persona_id"`
+			PersonaName string   `json:"persona_name"`
+			Status      string   `json:"status"`
+			Channels    []string `json:"channels"`
+		} `json:"agents"`
 	}
-	json.NewDecoder(rec.Body).Decode(&entries)
+	json.NewDecoder(rec.Body).Decode(&resp)
 
-	if len(entries) != 1 {
-		t.Fatalf("expected 1 entry, got %d", len(entries))
+	if len(resp.Agents) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(resp.Agents))
 	}
-	if entries[0].PersonaName != "testbot" {
-		t.Errorf("persona_name = %q, want testbot", entries[0].PersonaName)
+	if resp.Agents[0].PersonaName != "testbot" {
+		t.Errorf("persona_name = %q, want testbot", resp.Agents[0].PersonaName)
 	}
-	if entries[0].Status != "idle" {
-		t.Errorf("status = %q, want idle", entries[0].Status)
+	if resp.Agents[0].Status != "idle" {
+		t.Errorf("status = %q, want idle", resp.Agents[0].Status)
 	}
 }
 

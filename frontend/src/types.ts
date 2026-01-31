@@ -54,6 +54,11 @@ export interface AgentStatus {
   channels: string[];
 }
 
+export interface AgentStatusResponse {
+  supervisor_running: boolean;
+  agents: AgentStatus[];
+}
+
 export interface WsEvent {
   type: string;
   data: unknown;

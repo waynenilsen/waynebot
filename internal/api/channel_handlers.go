@@ -51,13 +51,14 @@ type postMessageRequest struct {
 }
 
 type messageJSON struct {
-	ID         int64  `json:"id"`
-	ChannelID  int64  `json:"channel_id"`
-	AuthorID   int64  `json:"author_id"`
-	AuthorType string `json:"author_type"`
-	AuthorName string `json:"author_name"`
-	Content    string `json:"content"`
-	CreatedAt  string `json:"created_at"`
+	ID         int64                 `json:"id"`
+	ChannelID  int64                 `json:"channel_id"`
+	AuthorID   int64                 `json:"author_id"`
+	AuthorType string                `json:"author_type"`
+	AuthorName string                `json:"author_name"`
+	Content    string                `json:"content"`
+	CreatedAt  string                `json:"created_at"`
+	Reactions  []model.ReactionCount `json:"reactions"`
 }
 
 func toMessageJSON(m model.Message) messageJSON {
@@ -176,9 +177,24 @@ func (h *ChannelHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch reactions for all messages in one batch query.
+	var reactionMap map[int64][]model.ReactionCount
+	user := GetUser(r)
+	if user != nil && len(messages) > 0 {
+		ids := make([]int64, len(messages))
+		for i, m := range messages {
+			ids[i] = m.ID
+		}
+		reactionMap, _ = model.GetReactionCountsBatch(h.DB, ids, user.ID, "human")
+	}
+
 	out := make([]messageJSON, len(messages))
 	for i, m := range messages {
-		out[i] = toMessageJSON(m)
+		mj := toMessageJSON(m)
+		if reactionMap != nil {
+			mj.Reactions = reactionMap[m.ID]
+		}
+		out[i] = mj
 	}
 	WriteJSON(w, http.StatusOK, out)
 }

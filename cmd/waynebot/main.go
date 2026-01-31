@@ -53,6 +53,7 @@ func main() {
 			"sort", "uniq", "diff", "echo", "date", "pwd",
 		},
 	})
+	toolsRegistry.Register("message_react", tools.MessageReact(database, hub))
 	supervisor := agent.NewSupervisor(database, hub, llmClient, toolsRegistry)
 
 	if err := supervisor.StartAll(); err != nil {

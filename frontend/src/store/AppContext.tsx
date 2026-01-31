@@ -6,7 +6,7 @@ import {
   useReducer,
 } from "react";
 import type { ReactNode } from "react";
-import type { Channel, Message, User } from "../types";
+import type { Channel, Message, ReactionCount, User } from "../types";
 
 interface AppState {
   user: User | null;
@@ -22,7 +22,13 @@ type AppAction =
   | { type: "SET_MESSAGES"; channelId: number; messages: Message[] }
   | { type: "ADD_MESSAGE"; message: Message }
   | { type: "INCREMENT_UNREAD"; channelId: number }
-  | { type: "CLEAR_UNREAD"; channelId: number };
+  | { type: "CLEAR_UNREAD"; channelId: number }
+  | {
+      type: "UPDATE_REACTIONS";
+      channelId: number;
+      messageId: number;
+      reactions: ReactionCount[];
+    };
 
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -62,6 +68,21 @@ function reducer(state: AppState, action: AppAction): AppState {
           ch.id === action.channelId ? { ...ch, unread_count: 0 } : ch,
         ),
       };
+    case "UPDATE_REACTIONS": {
+      const msgs = state.messages[action.channelId];
+      if (!msgs) return state;
+      return {
+        ...state,
+        messages: {
+          ...state.messages,
+          [action.channelId]: msgs.map((m) =>
+            m.id === action.messageId
+              ? { ...m, reactions: action.reactions }
+              : m,
+          ),
+        },
+      };
+    }
   }
 }
 
@@ -74,6 +95,11 @@ interface AppContextValue {
   addMessage: (message: Message) => void;
   incrementUnread: (channelId: number) => void;
   clearUnread: (channelId: number) => void;
+  updateReactions: (
+    channelId: number,
+    messageId: number,
+    reactions: ReactionCount[],
+  ) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -118,6 +144,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (channelId: number) => dispatch({ type: "CLEAR_UNREAD", channelId }),
     [],
   );
+  const updateReactions = useCallback(
+    (channelId: number, messageId: number, reactions: ReactionCount[]) =>
+      dispatch({ type: "UPDATE_REACTIONS", channelId, messageId, reactions }),
+    [],
+  );
 
   const value = useMemo(
     () => ({
@@ -129,6 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addMessage,
       incrementUnread,
       clearUnread,
+      updateReactions,
     }),
     [
       state,
@@ -139,6 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addMessage,
       incrementUnread,
       clearUnread,
+      updateReactions,
     ],
   );
 

@@ -1,4 +1,5 @@
-import type { Message } from "../types";
+import { useState } from "react";
+import type { Message, ReactionCount } from "../types";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 function formatRelativeTime(dateStr: string): string {
@@ -43,11 +44,93 @@ function AgentAvatar({ name }: { name: string }) {
   );
 }
 
-interface MessageItemProps {
-  message: Message;
+const QUICK_EMOJI = [
+  "\u{1F44D}",
+  "\u{2764}\u{FE0F}",
+  "\u{1F604}",
+  "\u{1F44E}",
+  "\u{1F440}",
+  "\u{1F389}",
+  "\u{1F914}",
+  "\u{1F525}",
+];
+
+interface ReactionPillsProps {
+  reactions: ReactionCount[] | null;
+  onToggle: (emoji: string, currentlyReacted: boolean) => void;
 }
 
-export default function MessageItem({ message }: MessageItemProps) {
+function ReactionPills({ reactions, onToggle }: ReactionPillsProps) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  const pills = reactions?.filter((r) => r.count > 0) ?? [];
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 mt-1">
+      {pills.map((r) => (
+        <button
+          key={r.emoji}
+          onClick={() => onToggle(r.emoji, r.reacted)}
+          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border transition-colors ${
+            r.reacted
+              ? "border-[#e2b714]/40 bg-[#e2b714]/10 text-[#e2b714]"
+              : "border-[#a0a0b8]/15 bg-[#a0a0b8]/5 text-[#a0a0b8]/70 hover:border-[#a0a0b8]/30"
+          }`}
+        >
+          <span>{r.emoji}</span>
+          <span className="font-mono text-[10px]">{r.count}</span>
+        </button>
+      ))}
+
+      {/* Add reaction button */}
+      <div className="relative">
+        <button
+          onClick={() => setShowPicker((p) => !p)}
+          className="inline-flex items-center px-1.5 py-0.5 rounded text-xs border border-transparent text-[#a0a0b8]/30 hover:text-[#a0a0b8]/60 hover:border-[#a0a0b8]/15 transition-colors opacity-0 group-hover:opacity-100"
+          title="Add reaction"
+        >
+          +
+        </button>
+        {showPicker && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowPicker(false)}
+            />
+            <div className="absolute bottom-full left-0 mb-1 z-50 bg-[#1a1a2e] border border-[#a0a0b8]/15 rounded-lg p-1.5 flex gap-0.5 shadow-lg">
+              {QUICK_EMOJI.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => {
+                    onToggle(emoji, false);
+                    setShowPicker(false);
+                  }}
+                  className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#a0a0b8]/10 transition-colors text-sm"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface MessageItemProps {
+  message: Message;
+  onReactionToggle: (
+    messageId: number,
+    emoji: string,
+    reacted: boolean,
+  ) => void;
+}
+
+export default function MessageItem({
+  message,
+  onReactionToggle,
+}: MessageItemProps) {
   const isAgent = message.author_type === "agent";
 
   return (
@@ -86,6 +169,13 @@ export default function MessageItem({ message }: MessageItemProps) {
         <div className="text-[#c8c8e0] mt-0.5">
           <MarkdownRenderer content={message.content} />
         </div>
+
+        <ReactionPills
+          reactions={message.reactions}
+          onToggle={(emoji, reacted) =>
+            onReactionToggle(message.id, emoji, reacted)
+          }
+        />
       </div>
     </div>
   );

@@ -12,6 +12,12 @@ export interface Channel {
   unread_count: number;
 }
 
+export interface ReactionCount {
+  emoji: string;
+  count: number;
+  reacted: boolean;
+}
+
 export interface Message {
   id: number;
   channel_id: number;
@@ -20,6 +26,16 @@ export interface Message {
   author_name: string;
   content: string;
   created_at: string;
+  reactions: ReactionCount[] | null;
+}
+
+export interface ReactionEvent {
+  message_id: number;
+  channel_id: number;
+  emoji: string;
+  author_id: number;
+  author_type: string;
+  counts: ReactionCount[];
 }
 
 export interface Persona {

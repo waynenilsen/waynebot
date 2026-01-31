@@ -92,6 +92,30 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 			},
 		},
 	},
+	"message_react": {
+		Function: shared.FunctionDefinitionParam{
+			Name:        "message_react",
+			Description: param.NewOpt("Add or remove an emoji reaction on a message."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"message_id": map[string]any{
+						"type":        "integer",
+						"description": "The ID of the message to react to.",
+					},
+					"emoji": map[string]any{
+						"type":        "string",
+						"description": "The emoji to react with (unicode).",
+					},
+					"remove": map[string]any{
+						"type":        "boolean",
+						"description": "If true, remove the reaction instead of adding it. Defaults to false.",
+					},
+				},
+				"required": []string{"message_id", "emoji"},
+			},
+		},
+	},
 }
 
 // ToolsForPersona returns the openai tool params for tools enabled on the given persona.

@@ -28,7 +28,7 @@ function AuthenticatedApp({
     selectChannel,
     createChannel,
   } = useChannels();
-  const { messages, loading, hasMore, loadMore, sendMessage } =
+  const { messages, loading, hasMore, loadMore, sendMessage, toggleReaction } =
     useMessages(currentChannelId);
   const { connected, wasConnected } = useWebSocket(true);
   const [currentView, setCurrentView] = useState("channels");
@@ -141,6 +141,7 @@ function AuthenticatedApp({
                 hasMore={hasMore}
                 onLoadMore={loadMore}
                 channelName={currentChannel.name}
+                onReactionToggle={toggleReaction}
               />
               <MessageCompose onSend={sendMessage} composeRef={composeRef} />
             </>

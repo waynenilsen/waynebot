@@ -53,12 +53,12 @@ func TestToolsForPersonaUnknownTool(t *testing.T) {
 
 func TestAllToolNames(t *testing.T) {
 	names := AllToolNames()
-	if len(names) != 4 {
-		t.Fatalf("got %d tool names, want 4", len(names))
+	if len(names) != 5 {
+		t.Fatalf("got %d tool names, want 5", len(names))
 	}
 
 	sort.Strings(names)
-	expected := []string{"file_read", "file_write", "http_fetch", "shell_exec"}
+	expected := []string{"file_read", "file_write", "http_fetch", "message_react", "shell_exec"}
 	for i, name := range names {
 		if name != expected[i] {
 			t.Fatalf("got name %q at index %d, want %q", name, i, expected[i])

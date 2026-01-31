@@ -189,7 +189,8 @@ func (a *Actor) executeToolCalls(messages []openai.ChatCompletionMessageParamUni
 	// Execute each tool and append the result.
 	for _, tc := range resp.ToolCalls {
 		start := time.Now()
-		result, err := a.Tools.Call(context.Background(), tc.Name, json.RawMessage(tc.Arguments))
+		toolCtx := tools.WithPersonaID(context.Background(), a.Persona.ID)
+		result, err := a.Tools.Call(toolCtx, tc.Name, json.RawMessage(tc.Arguments))
 		duration := time.Since(start)
 
 		errText := ""

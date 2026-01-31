@@ -4,7 +4,7 @@ import { useApp } from "../store/AppContext";
 import { useErrors } from "../store/ErrorContext";
 
 export function useMessages(channelId: number | null) {
-  const { state, setMessages, addMessage } = useApp();
+  const { state, setMessages, addMessage, updateReactions } = useApp();
   const { pushError } = useErrors();
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -68,5 +68,22 @@ export function useMessages(channelId: number | null) {
     [channelId, addMessage, pushError],
   );
 
-  return { messages, loading, hasMore, loadMore, sendMessage };
+  const toggleReaction = useCallback(
+    async (messageId: number, emoji: string, reacted: boolean) => {
+      if (!channelId) return;
+      try {
+        const counts = reacted
+          ? await api.removeReaction(channelId, messageId, emoji)
+          : await api.addReaction(channelId, messageId, emoji);
+        updateReactions(channelId, messageId, counts);
+      } catch (err) {
+        pushError(
+          `Failed to toggle reaction: ${err instanceof Error ? err.message : "unknown error"}`,
+        );
+      }
+    },
+    [channelId, updateReactions, pushError],
+  );
+
+  return { messages, loading, hasMore, loadMore, sendMessage, toggleReaction };
 }

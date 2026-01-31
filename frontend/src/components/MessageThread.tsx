@@ -8,6 +8,11 @@ interface MessageThreadProps {
   hasMore: boolean;
   onLoadMore: () => void;
   channelName: string;
+  onReactionToggle: (
+    messageId: number,
+    emoji: string,
+    reacted: boolean,
+  ) => void;
 }
 
 export default function MessageThread({
@@ -16,6 +21,7 @@ export default function MessageThread({
   hasMore,
   onLoadMore,
   channelName,
+  onReactionToggle,
 }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -104,7 +110,11 @@ export default function MessageThread({
 
         {/* Messages */}
         {messages.map((msg) => (
-          <MessageItem key={msg.id} message={msg} />
+          <MessageItem
+            key={msg.id}
+            message={msg}
+            onReactionToggle={onReactionToggle}
+          />
         ))}
       </div>
     </div>

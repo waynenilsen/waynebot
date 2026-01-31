@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { connectWs } from "../ws";
 import type { ConnectionState } from "../ws";
-import type { Message, WsEvent } from "../types";
+import type { Message, ReactionEvent, WsEvent } from "../types";
 import { useApp } from "../store/AppContext";
 
 export function useWebSocket(authenticated: boolean) {
-  const { state, addMessage, incrementUnread } = useApp();
+  const { state, addMessage, incrementUnread, updateReactions } = useApp();
   const [connected, setConnected] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
   const connRef = useRef<ReturnType<typeof connectWs> | null>(null);
@@ -40,6 +40,12 @@ export function useWebSocket(authenticated: boolean) {
             incrementUnread(msg.channel_id);
           }
         } else if (
+          event.type === "new_reaction" ||
+          event.type === "remove_reaction"
+        ) {
+          const data = event.data as ReactionEvent;
+          updateReactions(data.channel_id, data.message_id, data.counts);
+        } else if (
           event.type === "agent_llm_call" ||
           event.type === "agent_tool_execution"
         ) {
@@ -64,7 +70,7 @@ export function useWebSocket(authenticated: boolean) {
     return () => {
       conn.close();
     };
-  }, [authenticated, addMessage, incrementUnread]);
+  }, [authenticated, addMessage, incrementUnread, updateReactions]);
 
   return { connected, wasConnected };
 }

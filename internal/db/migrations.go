@@ -146,6 +146,21 @@ CREATE TABLE read_positions (
 );
 `,
 	},
+	{
+		Version: 4,
+		SQL: `
+CREATE TABLE reactions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id  INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    author_id   INTEGER NOT NULL,
+    author_type TEXT    NOT NULL CHECK(author_type IN ('human', 'agent', 'connector')),
+    emoji       TEXT    NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(message_id, author_id, author_type, emoji)
+);
+CREATE INDEX idx_reactions_message_id ON reactions(message_id);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

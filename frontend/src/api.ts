@@ -3,6 +3,7 @@ import type {
   AgentStatusResponse,
   AuthResponse,
   Channel,
+  ReactionCount,
   Invite,
   LLMCall,
   Message,
@@ -208,6 +209,34 @@ export async function getAgentStats(
   personaId: number,
 ): Promise<AgentStatsResponse> {
   return apiFetch<AgentStatsResponse>(`/api/agents/${personaId}/stats`);
+}
+
+export async function addReaction(
+  channelId: number,
+  messageId: number,
+  emoji: string,
+): Promise<ReactionCount[]> {
+  return apiFetch<ReactionCount[]>(
+    `/api/channels/${channelId}/messages/${messageId}/reactions`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ emoji }),
+    },
+  );
+}
+
+export async function removeReaction(
+  channelId: number,
+  messageId: number,
+  emoji: string,
+): Promise<ReactionCount[]> {
+  return apiFetch<ReactionCount[]>(
+    `/api/channels/${channelId}/messages/${messageId}/reactions`,
+    {
+      method: "DELETE",
+      body: JSON.stringify({ emoji }),
+    },
+  );
 }
 
 export { ApiError };

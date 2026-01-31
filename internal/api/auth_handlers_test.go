@@ -316,12 +316,12 @@ func TestMeUnauthenticated(t *testing.T) {
 	}
 }
 
-// TestHealthz verifies the health check endpoint.
-func TestHealthz(t *testing.T) {
+// TestHealth verifies the health check endpoint.
+func TestHealth(t *testing.T) {
 	d := openTestDB(t)
 	router := newTestRouter(t, d)
 
-	req := httptest.NewRequest("GET", "/healthz", nil)
+	req := httptest.NewRequest("GET", "/health", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 

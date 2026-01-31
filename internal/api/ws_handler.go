@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -86,7 +86,7 @@ func (h *WsHandler) Upgrade(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("ws upgrade: %v", err)
+		slog.Error("ws upgrade failed", "error", err)
 		return
 	}
 

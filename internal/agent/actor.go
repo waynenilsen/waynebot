@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/openai/openai-go"
@@ -63,7 +63,7 @@ func (a *Actor) Run(ctx context.Context) {
 func (a *Actor) processChannels(ctx context.Context) {
 	channels, err := model.GetSubscribedChannels(a.DB, a.Persona.ID)
 	if err != nil {
-		log.Printf("actor %s: get subscribed channels: %v", a.Persona.Name, err)
+		slog.Error("actor: get subscribed channels", "persona", a.Persona.Name, "error", err)
 		return
 	}
 
@@ -79,13 +79,13 @@ func (a *Actor) processChannels(ctx context.Context) {
 func (a *Actor) processChannel(ctx context.Context, ch model.Channel) {
 	cursor, err := a.Cursors.Get(a.Persona.ID, ch.ID)
 	if err != nil {
-		log.Printf("actor %s: get cursor for channel %d: %v", a.Persona.Name, ch.ID, err)
+		slog.Error("actor: get cursor", "persona", a.Persona.Name, "channel_id", ch.ID, "error", err)
 		return
 	}
 
 	newMessages, err := model.GetMessagesSince(a.DB, ch.ID, cursor)
 	if err != nil {
-		log.Printf("actor %s: get messages since %d in channel %d: %v", a.Persona.Name, cursor, ch.ID, err)
+		slog.Error("actor: get messages since cursor", "persona", a.Persona.Name, "cursor", cursor, "channel_id", ch.ID, "error", err)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (a *Actor) processChannel(ctx context.Context, ch model.Channel) {
 	latestID := newMessages[len(newMessages)-1].ID
 	defer func() {
 		if err := a.Cursors.Set(a.Persona.ID, ch.ID, latestID); err != nil {
-			log.Printf("actor %s: set cursor: %v", a.Persona.Name, err)
+			slog.Error("actor: set cursor", "persona", a.Persona.Name, "error", err)
 		}
 	}()
 
@@ -107,7 +107,7 @@ func (a *Actor) processChannel(ctx context.Context, ch model.Channel) {
 
 	ok, err := a.Budget.WithinBudget(a.Persona.ID, a.Persona.MaxTokensPerHour)
 	if err != nil {
-		log.Printf("actor %s: budget check: %v", a.Persona.Name, err)
+		slog.Error("actor: budget check", "persona", a.Persona.Name, "error", err)
 		return
 	}
 	if !ok {
@@ -125,7 +125,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 
 	history, err := model.GetRecentMessages(a.DB, ch.ID, 50)
 	if err != nil {
-		log.Printf("actor %s: get history: %v", a.Persona.Name, err)
+		slog.Error("actor: get history", "persona", a.Persona.Name, "error", err)
 		a.Status.Set(a.Persona.ID, StatusError)
 		return
 	}
@@ -143,7 +143,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 
 		resp, err := a.LLM.ChatCompletion(ctx, a.Persona.Model, messages, toolDefs, a.Persona.Temperature, a.Persona.MaxTokens)
 		if err != nil {
-			log.Printf("actor %s: llm call: %v", a.Persona.Name, err)
+			slog.Error("actor: llm call", "persona", a.Persona.Name, "error", err)
 			a.Status.Set(a.Persona.ID, StatusError)
 			return
 		}
@@ -163,7 +163,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 		messages = a.executeToolCalls(messages, resp)
 	}
 
-	log.Printf("actor %s: hit max tool rounds (%d) in channel %d", a.Persona.Name, maxToolRounds, ch.ID)
+	slog.Warn("actor: hit max tool rounds", "persona", a.Persona.Name, "max_rounds", maxToolRounds, "channel_id", ch.ID)
 }
 
 // executeToolCalls runs each tool call, appends assistant + tool result messages for the
@@ -188,10 +188,17 @@ func (a *Actor) executeToolCalls(messages []openai.ChatCompletionMessageParamUni
 
 	// Execute each tool and append the result.
 	for _, tc := range resp.ToolCalls {
+		start := time.Now()
 		result, err := a.Tools.Call(context.Background(), tc.Name, json.RawMessage(tc.Arguments))
+		duration := time.Since(start)
+
+		errText := ""
 		if err != nil {
+			errText = err.Error()
 			result = fmt.Sprintf("error: %v", err)
 		}
+
+		a.recordToolExecution(tc.Name, tc.Arguments, result, errText, duration)
 		messages = append(messages, openai.ToolMessage(tc.ID, result))
 	}
 
@@ -202,7 +209,7 @@ func (a *Actor) executeToolCalls(messages []openai.ChatCompletionMessageParamUni
 func (a *Actor) postMessage(ch model.Channel, content string) {
 	msg, err := model.CreateMessage(a.DB, ch.ID, a.Persona.ID, "agent", a.Persona.Name, content)
 	if err != nil {
-		log.Printf("actor %s: post message: %v", a.Persona.Name, err)
+		slog.Error("actor: post message", "persona", a.Persona.Name, "error", err)
 		return
 	}
 
@@ -220,7 +227,19 @@ func (a *Actor) recordLLMCall(channelID int64, resp llm.Response) {
 		a.Persona.ID, channelID, a.Persona.Model, resp.PromptTokens, resp.CompletionTokens,
 	)
 	if err != nil {
-		log.Printf("actor %s: record llm call: %v", a.Persona.Name, err)
+		slog.Error("actor: record llm call", "persona", a.Persona.Name, "error", err)
+	}
+}
+
+// recordToolExecution logs a tool invocation to the tool_executions table.
+func (a *Actor) recordToolExecution(toolName, argsJSON, output, errText string, duration time.Duration) {
+	_, err := a.DB.WriteExec(
+		`INSERT INTO tool_executions (persona_id, tool_name, args_json, output_text, error_text, duration_ms)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		a.Persona.ID, toolName, argsJSON, output, errText, duration.Milliseconds(),
+	)
+	if err != nil {
+		slog.Error("actor: record tool execution", "persona", a.Persona.Name, "tool", toolName, "error", err)
 	}
 }
 

@@ -18,9 +18,8 @@ import (
 func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ...*agent.Supervisor) http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   corsOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -28,9 +27,13 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
+
+	limiter := NewRateLimiter(60, 120)
+	r.Use(limiter.Middleware)
+	r.Use(middleware.Logger)
 	r.Use(auth.Middleware(database))
 
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
 	})

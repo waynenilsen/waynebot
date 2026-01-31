@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/api"
@@ -21,19 +22,23 @@ import (
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	cfg := config.Load()
 
 	database, err := db.Open(cfg.DBPath)
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		slog.Error("failed to open database", "error", err)
+		os.Exit(1)
 	}
 	defer database.Close()
 
 	v, err := database.SchemaVersion()
 	if err != nil {
-		log.Fatalf("failed to get schema version: %v", err)
+		slog.Error("failed to get schema version", "error", err)
+		os.Exit(1)
 	}
-	log.Printf("database ready, schema version %d", v)
+	slog.Info("database ready", "schema_version", v)
 
 	hub := ws.NewHub()
 	go hub.Run()
@@ -43,9 +48,10 @@ func main() {
 	supervisor := agent.NewSupervisor(database, hub, llmClient, toolsRegistry)
 
 	if err := supervisor.StartAll(); err != nil {
-		log.Fatalf("failed to start agent supervisor: %v", err)
+		slog.Error("failed to start agent supervisor", "error", err)
+		os.Exit(1)
 	}
-	log.Println("agent supervisor started")
+	slog.Info("agent supervisor started")
 
 	connectors := connector.NewRegistry()
 	if cfg.IMAPHost != "" {
@@ -53,7 +59,8 @@ func main() {
 		if err != nil {
 			ch, err = model.CreateChannel(database, cfg.IMAPChannel, "incoming email")
 			if err != nil {
-				log.Fatalf("failed to create email channel: %v", err)
+				slog.Error("failed to create email channel", "error", err)
+				os.Exit(1)
 			}
 		}
 		emailConn := connector.NewEmailConnector(connector.EmailConfig{
@@ -64,7 +71,7 @@ func main() {
 			ChannelID: ch.ID,
 		}, connector.NewTLSIMAPClient(), database, hub)
 		connectors.Register(emailConn)
-		log.Printf("email connector registered for %s", cfg.IMAPUser)
+		slog.Info("email connector registered", "user", cfg.IMAPUser)
 	}
 	connectors.StartAll()
 
@@ -79,26 +86,63 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Session and ws_ticket cleanup goroutine.
+	go runCleanup(ctx, database)
+
 	go func() {
-		log.Printf("listening on :%d", cfg.Port)
+		slog.Info("listening", "port", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
+			slog.Error("server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("shutting down...")
+	slog.Info("shutting down...")
+
+	// Shutdown order: HTTP → connectors → agents → WS hub → DB (via defer).
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Error("http shutdown error", "error", err)
+	}
+	slog.Info("http server stopped")
 
 	connectors.StopAll()
-	log.Println("connectors stopped")
+	slog.Info("connectors stopped")
 
 	supervisor.StopAll()
-	log.Println("agent supervisor stopped")
+	slog.Info("agent supervisor stopped")
 
 	hub.Stop()
+	slog.Info("ws hub stopped")
 
-	if err := srv.Shutdown(context.Background()); err != nil {
-		log.Printf("shutdown error: %v", err)
+	slog.Info("stopped")
+}
+
+// runCleanup deletes expired sessions and ws_tickets every 15 minutes.
+func runCleanup(ctx context.Context, database *db.DB) {
+	ticker := time.NewTicker(15 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sessions, err := model.CleanupExpiredSessions(database)
+			if err != nil {
+				slog.Error("session cleanup failed", "error", err)
+			} else if sessions > 0 {
+				slog.Info("cleaned expired sessions", "count", sessions)
+			}
+
+			tickets, err := model.CleanupExpiredWsTickets(database)
+			if err != nil {
+				slog.Error("ws_ticket cleanup failed", "error", err)
+			} else if tickets > 0 {
+				slog.Info("cleaned expired ws_tickets", "count", tickets)
+			}
+		}
 	}
-	log.Println("stopped")
 }

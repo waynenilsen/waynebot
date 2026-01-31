@@ -2,7 +2,7 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"sync"
 )
 
@@ -58,7 +58,7 @@ func (h *Hub) Run() {
 		case event := <-h.broadcast:
 			data, err := json.Marshal(event)
 			if err != nil {
-				log.Printf("ws hub: marshal event: %v", err)
+				slog.Error("ws hub: marshal event", "error", err)
 				continue
 			}
 
@@ -111,7 +111,7 @@ func (h *Hub) Broadcast(event Event) {
 	select {
 	case h.broadcast <- event:
 	default:
-		log.Printf("ws hub: broadcast channel full, dropping event")
+		slog.Warn("ws hub: broadcast channel full, dropping event")
 	}
 }
 

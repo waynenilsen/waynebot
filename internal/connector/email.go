@@ -3,7 +3,7 @@ package connector
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -73,7 +73,7 @@ func (e *EmailConnector) Name() string {
 func (e *EmailConnector) Run(ctx context.Context) {
 	for {
 		if err := e.client.Connect(e.cfg.Host, e.cfg.Port, e.cfg.User, e.cfg.Pass); err != nil {
-			log.Printf("email connector: connect failed: %v", err)
+			slog.Error("email connector: connect failed", "error", err)
 			if !sleepCtx(ctx, 30*time.Second) {
 				return
 			}
@@ -97,7 +97,7 @@ func (e *EmailConnector) pollLoop(ctx context.Context) {
 	for {
 		msgs, err := e.client.FetchUnseen()
 		if err != nil {
-			log.Printf("email connector: fetch unseen: %v", err)
+			slog.Error("email connector: fetch unseen", "error", err)
 			return // reconnect
 		}
 
@@ -109,7 +109,7 @@ func (e *EmailConnector) pollLoop(ctx context.Context) {
 				uids[i] = m.UID
 			}
 			if err := e.client.MarkSeen(uids); err != nil {
-				log.Printf("email connector: mark seen: %v", err)
+				slog.Error("email connector: mark seen", "error", err)
 				return // reconnect
 			}
 		}
@@ -125,7 +125,7 @@ func (e *EmailConnector) postMessages(msgs []EmailMessage) {
 		content := FormatEmail(em)
 		msg, err := model.CreateMessage(e.db, e.cfg.ChannelID, 0, "connector", em.From, content)
 		if err != nil {
-			log.Printf("email connector: create message: %v", err)
+			slog.Error("email connector: create message", "error", err)
 			continue
 		}
 		e.hub.Broadcast(ws.Event{

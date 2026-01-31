@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -66,7 +66,7 @@ func (c *Client) ReadPump() {
 		_, _, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
-				log.Printf("ws: unexpected close: %v", err)
+				slog.Warn("ws: unexpected close", "error", err)
 			}
 			break
 		}

@@ -2,7 +2,7 @@ package agent
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 
 	"github.com/waynenilsen/waynebot/internal/db"
@@ -131,8 +131,8 @@ func (s *Supervisor) startActorLocked(p model.Persona) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		log.Printf("supervisor: starting actor for persona %q (id=%d)", p.Name, p.ID)
+		slog.Info("supervisor: starting actor", "persona", p.Name, "persona_id", p.ID)
 		actor.Run(ctx)
-		log.Printf("supervisor: actor for persona %q (id=%d) stopped", p.Name, p.ID)
+		slog.Info("supervisor: actor stopped", "persona", p.Name, "persona_id", p.ID)
 	}()
 }

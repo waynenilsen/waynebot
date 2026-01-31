@@ -2,7 +2,7 @@ package connector
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 )
 
@@ -47,9 +47,9 @@ func (r *Registry) StartAll() {
 		r.wg.Add(1)
 		go func(c Connector) {
 			defer r.wg.Done()
-			log.Printf("connector %q started", c.Name())
+			slog.Info("connector started", "name", c.Name())
 			c.Run(ctx)
-			log.Printf("connector %q stopped", c.Name())
+			slog.Info("connector stopped", "name", c.Name())
 		}(c)
 	}
 }

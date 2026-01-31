@@ -1,16 +1,18 @@
 import { useCallback, useEffect } from "react";
 import * as api from "../api";
 import { useApp } from "../store/AppContext";
+import { useErrors } from "../store/ErrorContext";
 
 export function useChannels() {
   const { state, setChannels, setCurrentChannel } = useApp();
+  const { pushError } = useErrors();
 
   useEffect(() => {
     api
       .getChannels()
       .then(setChannels)
-      .catch(() => {});
-  }, [setChannels]);
+      .catch((err) => pushError(`Failed to load channels: ${err.message}`));
+  }, [setChannels, pushError]);
 
   const selectChannel = useCallback(
     (id: number) => {
@@ -21,11 +23,18 @@ export function useChannels() {
 
   const createChannel = useCallback(
     async (name: string, description: string) => {
-      const ch = await api.createChannel(name, description);
-      setChannels([...state.channels, ch]);
-      return ch;
+      try {
+        const ch = await api.createChannel(name, description);
+        setChannels([...state.channels, ch]);
+        return ch;
+      } catch (err) {
+        pushError(
+          `Failed to create channel: ${err instanceof Error ? err.message : "unknown error"}`,
+        );
+        throw err;
+      }
     },
-    [state.channels, setChannels],
+    [state.channels, setChannels, pushError],
   );
 
   return {

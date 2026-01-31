@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import App from "./App";
 import { AppProvider } from "./store/AppContext";
+import { ErrorProvider } from "./store/ErrorContext";
 import type { AuthResponse, User } from "./types";
 
 const alice: User = {
@@ -42,9 +43,11 @@ const mockToken = vi.mocked(tokenUtils);
 
 function renderApp() {
   return render(
-    <AppProvider>
-      <App />
-    </AppProvider>,
+    <ErrorProvider>
+      <AppProvider>
+        <App />
+      </AppProvider>
+    </ErrorProvider>,
   );
 }
 

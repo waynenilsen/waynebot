@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createElement } from "react";
 import type { ReactNode } from "react";
 import { AppProvider } from "../store/AppContext";
+import { ErrorProvider } from "../store/ErrorContext";
 import { useMessages } from "./useMessages";
 import type { Message } from "../types";
 
@@ -27,7 +28,11 @@ function msg(id: number, content = `message ${id}`): Message {
 }
 
 function wrapper({ children }: { children: ReactNode }) {
-  return createElement(AppProvider, null, children);
+  return createElement(
+    ErrorProvider,
+    null,
+    createElement(AppProvider, null, children),
+  );
 }
 
 function scenario(channelId: number | null = 1) {

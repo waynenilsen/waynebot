@@ -1,5 +1,8 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { createElement } from "react";
+import type { ReactNode } from "react";
+import { ErrorProvider } from "../store/ErrorContext";
 import { usePersonas } from "./usePersonas";
 import type { Persona } from "../types";
 
@@ -39,8 +42,12 @@ const bob: Persona = {
   created_at: "2024-01-01T00:00:00Z",
 };
 
+function wrapper({ children }: { children: ReactNode }) {
+  return createElement(ErrorProvider, null, children);
+}
+
 function scenario() {
-  return renderHook(() => usePersonas());
+  return renderHook(() => usePersonas(), { wrapper });
 }
 
 beforeEach(() => {

@@ -1,5 +1,8 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { createElement } from "react";
+import type { ReactNode } from "react";
+import { ErrorProvider } from "../store/ErrorContext";
 import { useInvites } from "./useInvites";
 import type { Invite } from "../types";
 
@@ -27,8 +30,12 @@ const invite2: Invite = {
   created_at: "2024-01-02T00:00:00Z",
 };
 
+function wrapper({ children }: { children: ReactNode }) {
+  return createElement(ErrorProvider, null, children);
+}
+
 function scenario() {
-  return renderHook(() => useInvites());
+  return renderHook(() => useInvites(), { wrapper });
 }
 
 beforeEach(() => {

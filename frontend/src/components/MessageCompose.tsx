@@ -1,15 +1,26 @@
-import { useState, useRef, useCallback, type KeyboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useCallback,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 
 const MAX_LENGTH = 10_000;
 
 interface MessageComposeProps {
   onSend: (content: string) => Promise<void>;
+  composeRef?: RefObject<HTMLTextAreaElement | null>;
 }
 
-export default function MessageCompose({ onSend }: MessageComposeProps) {
+export default function MessageCompose({
+  onSend,
+  composeRef,
+}: MessageComposeProps) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = composeRef ?? internalRef;
 
   const trimmed = text.trim();
   const canSend = trimmed.length > 0 && !sending;
@@ -22,7 +33,7 @@ export default function MessageCompose({ onSend }: MessageComposeProps) {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 200) + "px";
-  }, []);
+  }, [textareaRef]);
 
   const handleSend = useCallback(async () => {
     if (!canSend || overLimit) return;
@@ -37,7 +48,7 @@ export default function MessageCompose({ onSend }: MessageComposeProps) {
       setSending(false);
       textareaRef.current?.focus();
     }
-  }, [canSend, overLimit, onSend, trimmed]);
+  }, [canSend, overLimit, onSend, trimmed, textareaRef]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {

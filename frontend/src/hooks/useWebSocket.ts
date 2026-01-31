@@ -7,6 +7,7 @@ import { useApp } from "../store/AppContext";
 export function useWebSocket(authenticated: boolean) {
   const { addMessage } = useApp();
   const [connected, setConnected] = useState(false);
+  const [wasConnected, setWasConnected] = useState(false);
   const connRef = useRef<ReturnType<typeof connectWs> | null>(null);
 
   useEffect(() => {
@@ -17,6 +18,8 @@ export function useWebSocket(authenticated: boolean) {
       return;
     }
 
+    let hadConnection = false;
+
     const conn = connectWs(
       (event: WsEvent) => {
         if (event.type === "new_message") {
@@ -24,7 +27,14 @@ export function useWebSocket(authenticated: boolean) {
         }
       },
       (state: ConnectionState) => {
-        setConnected(state === "connected");
+        const isConnected = state === "connected";
+        setConnected(isConnected);
+        if (isConnected && hadConnection) {
+          setWasConnected(true);
+        }
+        if (isConnected) {
+          hadConnection = true;
+        }
       },
     );
     connRef.current = conn;
@@ -34,5 +44,5 @@ export function useWebSocket(authenticated: boolean) {
     };
   }, [authenticated, addMessage]);
 
-  return { connected };
+  return { connected, wasConnected };
 }

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../api";
 import { useApp } from "../store/AppContext";
+import { useErrors } from "../store/ErrorContext";
 
 export function useMessages(channelId: number | null) {
   const { state, setMessages, addMessage } = useApp();
+  const { pushError } = useErrors();
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const loadedRef = useRef<Set<number>>(new Set());
@@ -23,9 +25,9 @@ export function useMessages(channelId: number | null) {
         setMessages(channelId, msgs);
         setHasMore(msgs.length >= 50);
       })
-      .catch(() => {})
+      .catch((err) => pushError(`Failed to load messages: ${err.message}`))
       .finally(() => setLoading(false));
-  }, [channelId, setMessages]);
+  }, [channelId, setMessages, pushError]);
 
   const loadMore = useCallback(async () => {
     if (!channelId || loading || !hasMore || messages.length === 0) return;
@@ -41,20 +43,29 @@ export function useMessages(channelId: number | null) {
       if (older.length > 0) {
         setMessages(channelId, [...older, ...messages]);
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      pushError(
+        `Failed to load older messages: ${err instanceof Error ? err.message : "unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
-  }, [channelId, loading, hasMore, messages, setMessages]);
+  }, [channelId, loading, hasMore, messages, setMessages, pushError]);
 
   const sendMessage = useCallback(
     async (content: string) => {
       if (!channelId) return;
-      const msg = await api.postMessage(channelId, content);
-      addMessage(msg);
+      try {
+        const msg = await api.postMessage(channelId, content);
+        addMessage(msg);
+      } catch (err) {
+        pushError(
+          `Failed to send message: ${err instanceof Error ? err.message : "unknown error"}`,
+        );
+        throw err;
+      }
     },
-    [channelId, addMessage],
+    [channelId, addMessage, pushError],
   );
 
   return { messages, loading, hasMore, loadMore, sendMessage };

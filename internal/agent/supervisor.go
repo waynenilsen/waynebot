@@ -22,13 +22,35 @@ type Supervisor struct {
 	Decision *DecisionMaker
 	Budget   *BudgetChecker
 
-	mu     sync.Mutex
-	actors map[int64]actorHandle
-	wg     sync.WaitGroup
+	mu      sync.Mutex
+	actors  map[int64]actorHandle
+	wg      sync.WaitGroup
+	running bool
 }
 
 type actorHandle struct {
 	cancel context.CancelFunc
+}
+
+// NewSupervisor creates a Supervisor with all required dependencies.
+func NewSupervisor(database *db.DB, hub *ws.Hub, llmClient LLMClient, toolsRegistry *tools.Registry) *Supervisor {
+	return &Supervisor{
+		DB:       database,
+		Hub:      hub,
+		LLM:      llmClient,
+		Tools:    toolsRegistry,
+		Status:   NewStatusTracker(),
+		Cursors:  NewCursorStore(database),
+		Decision: NewDecisionMaker(),
+		Budget:   NewBudgetChecker(database),
+	}
+}
+
+// Running returns true if the supervisor has been started.
+func (s *Supervisor) Running() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.running
 }
 
 // StartAll lists all personas from the DB and starts an actor goroutine for each.
@@ -46,12 +68,13 @@ func (s *Supervisor) StartAll() error {
 	}
 
 	for _, p := range personas {
-		if _, running := s.actors[p.ID]; running {
+		if _, exists := s.actors[p.ID]; exists {
 			continue
 		}
 		s.startActorLocked(p)
 	}
 
+	s.running = true
 	return nil
 }
 
@@ -62,6 +85,7 @@ func (s *Supervisor) StopAll() {
 		h.cancel()
 		delete(s.actors, id)
 	}
+	s.running = false
 	s.mu.Unlock()
 
 	s.wg.Wait()

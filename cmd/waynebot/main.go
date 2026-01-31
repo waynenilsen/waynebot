@@ -9,9 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/api"
 	"github.com/waynenilsen/waynebot/internal/config"
 	"github.com/waynenilsen/waynebot/internal/db"
+	"github.com/waynenilsen/waynebot/internal/llm"
+	"github.com/waynenilsen/waynebot/internal/tools"
 	"github.com/waynenilsen/waynebot/internal/ws"
 )
 
@@ -33,7 +36,16 @@ func main() {
 	hub := ws.NewHub()
 	go hub.Run()
 
-	router := api.NewRouter(database, cfg.CORSOrigins, hub)
+	llmClient := llm.NewClient(cfg.OpenRouterKey)
+	toolsRegistry := tools.NewRegistry()
+	supervisor := agent.NewSupervisor(database, hub, llmClient, toolsRegistry)
+
+	if err := supervisor.StartAll(); err != nil {
+		log.Fatalf("failed to start agent supervisor: %v", err)
+	}
+	log.Println("agent supervisor started")
+
+	router := api.NewRouter(database, cfg.CORSOrigins, hub, supervisor)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
@@ -53,6 +65,9 @@ func main() {
 
 	<-ctx.Done()
 	log.Println("shutting down...")
+
+	supervisor.StopAll()
+	log.Println("agent supervisor stopped")
 
 	hub.Stop()
 

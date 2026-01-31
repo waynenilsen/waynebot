@@ -1,6 +1,9 @@
 package agent
 
-import "sync"
+import (
+	"maps"
+	"sync"
+)
 
 // Status represents the current state of an agent persona.
 type Status int
@@ -60,4 +63,13 @@ func (st *StatusTracker) Set(personaID int64, s Status) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	st.statuses[personaID] = s
+}
+
+// All returns a snapshot of all persona statuses.
+func (st *StatusTracker) All() map[int64]Status {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	out := make(map[int64]Status, len(st.statuses))
+	maps.Copy(out, st.statuses)
+	return out
 }

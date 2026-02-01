@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useChannels } from "./hooks/useChannels";
+import { useDMs } from "./hooks/useDMs";
 import { useMessages } from "./hooks/useMessages";
 import { useWebSocket } from "./hooks/useWebSocket";
 import LoginPage from "./pages/LoginPage";
@@ -10,6 +11,8 @@ import InvitePage from "./pages/InvitePage";
 import Layout from "./components/Layout";
 import Sidebar from "./components/Sidebar";
 import ChannelList from "./components/ChannelList";
+import DMList from "./components/DMList";
+import { dmDisplayName } from "./components/DMList";
 import MessageThread from "./components/MessageThread";
 import MessageCompose from "./components/MessageCompose";
 import ChannelSwitcher from "./components/ChannelSwitcher";
@@ -28,6 +31,7 @@ function AuthenticatedApp({
     selectChannel,
     createChannel,
   } = useChannels();
+  const { dms, currentDM, selectDM, createDM } = useDMs();
   const { messages, loading, hasMore, loadMore, sendMessage, toggleReaction } =
     useMessages(currentChannelId);
   const { connected, wasConnected } = useWebSocket(true);
@@ -38,7 +42,9 @@ function AuthenticatedApp({
 
   // Page title updates
   useEffect(() => {
-    if (currentView === "channels" && currentChannel) {
+    if (currentView === "channels" && currentDM) {
+      document.title = `${dmDisplayName(currentDM)} - waynebot`;
+    } else if (currentView === "channels" && currentChannel) {
       document.title = `# ${currentChannel.name} - waynebot`;
     } else if (currentView === "personas") {
       document.title = "Personas - waynebot";
@@ -49,7 +55,7 @@ function AuthenticatedApp({
     } else {
       document.title = "waynebot";
     }
-  }, [currentView, currentChannel]);
+  }, [currentView, currentChannel, currentDM]);
 
   // Show "connected" flash when reconnection succeeds
   useEffect(() => {
@@ -115,6 +121,20 @@ function AuthenticatedApp({
                 }}
               />
             }
+            dmList={
+              <DMList
+                dms={dms}
+                currentChannelId={currentChannelId}
+                onSelect={(id) => {
+                  selectDM(id);
+                  setCurrentView("channels");
+                }}
+                onCreate={async (opts) => {
+                  await createDM(opts);
+                  setCurrentView("channels");
+                }}
+              />
+            }
           />
         }
       >
@@ -133,7 +153,20 @@ function AuthenticatedApp({
             </div>
           )}
 
-          {currentView === "channels" && currentChannel ? (
+          {currentView === "channels" && currentDM ? (
+            <>
+              <MessageThread
+                messages={messages}
+                loading={loading}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+                channelName={dmDisplayName(currentDM)}
+                isDM
+                onReactionToggle={toggleReaction}
+              />
+              <MessageCompose onSend={sendMessage} composeRef={composeRef} />
+            </>
+          ) : currentView === "channels" && currentChannel ? (
             <>
               <MessageThread
                 messages={messages}

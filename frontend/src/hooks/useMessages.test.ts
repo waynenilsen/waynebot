@@ -24,6 +24,7 @@ function msg(id: number, content = `message ${id}`): Message {
     author_name: "alice",
     content,
     created_at: "2024-01-01T00:00:00Z",
+    reactions: null,
   };
 }
 
@@ -87,12 +88,14 @@ describe("useMessages", () => {
 
     await act(() => result.current.loadMore());
 
+    // Messages are reversed (backend returns newest-first), so oldest is msg(50)
     expect(mockApi.getMessages).toHaveBeenCalledWith(1, {
       limit: 50,
-      before: 1,
+      before: 50,
     });
+    // Older messages are also reversed (newest-first from backend)
     expect(result.current.messages).toHaveLength(52);
-    expect(result.current.messages[0].content).toBe("old1");
+    expect(result.current.messages[0].content).toBe("old2");
   });
 
   it("sendMessage posts and adds message to state", async () => {

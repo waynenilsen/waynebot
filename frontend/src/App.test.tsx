@@ -20,6 +20,9 @@ vi.mock("./api", () => ({
   getMe: vi.fn(),
   getChannels: vi.fn(),
   createChannel: vi.fn(),
+  listDMs: vi.fn(),
+  createDM: vi.fn(),
+  getPersonas: vi.fn(),
 }));
 
 vi.mock("./utils/token", () => ({
@@ -55,6 +58,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockToken.getToken.mockReturnValue(null);
   mockApi.getChannels.mockResolvedValue([]);
+  (mockApi as any).listDMs.mockResolvedValue([]);
 });
 
 describe("App", () => {

@@ -104,6 +104,20 @@ export interface ToolExecution {
   created_at: string;
 }
 
+export interface DMChannel {
+  id: number;
+  name: string;
+  is_dm: true;
+  created_at: string;
+  other_participant: {
+    user_id: number | null;
+    user_name: string | null;
+    persona_id: number | null;
+    persona_name: string | null;
+  };
+  unread_count: number;
+}
+
 export interface AgentStatsResponse {
   total_calls_last_hour: number;
   total_tokens_last_hour: number;

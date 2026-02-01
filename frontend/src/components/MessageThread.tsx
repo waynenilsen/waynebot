@@ -8,6 +8,7 @@ interface MessageThreadProps {
   hasMore: boolean;
   onLoadMore: () => void;
   channelName: string;
+  isDM?: boolean;
   onReactionToggle: (
     messageId: number,
     emoji: string,
@@ -21,6 +22,7 @@ export default function MessageThread({
   hasMore,
   onLoadMore,
   channelName,
+  isDM,
   onReactionToggle,
 }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -64,7 +66,7 @@ export default function MessageThread({
       {/* Channel header */}
       <div className="shrink-0 px-4 py-3 border-b border-[#e2b714]/10 bg-[#1a1a2e]">
         <h2 className="text-white text-sm font-bold font-mono flex items-center gap-2">
-          <span className="text-[#e2b714]/50">#</span>
+          <span className="text-[#e2b714]/50">{isDM ? "●" : "#"}</span>
           {channelName}
         </h2>
       </div>

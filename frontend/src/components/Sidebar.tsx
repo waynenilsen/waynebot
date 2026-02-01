@@ -5,6 +5,7 @@ interface SidebarProps {
   user: User;
   onLogout: () => void;
   channelList: ReactNode;
+  dmList: ReactNode;
   currentView: string;
   onNavigate: (view: string) => void;
 }
@@ -19,6 +20,7 @@ export default function Sidebar({
   user,
   onLogout,
   channelList,
+  dmList,
   currentView,
   onNavigate,
 }: SidebarProps) {
@@ -34,9 +36,10 @@ export default function Sidebar({
         </p>
       </div>
 
-      {/* Channels */}
+      {/* Channels & DMs */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="py-2">{channelList}</div>
+        <div className="py-2 border-t border-[#e2b714]/10">{dmList}</div>
 
         {/* Nav section */}
         <div className="px-3 pt-2 pb-2 border-t border-[#e2b714]/10">

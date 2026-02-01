@@ -19,6 +19,7 @@ function msg(id: number, content = `message ${id}`): Message {
     author_name: "alice",
     content,
     created_at: "2024-01-01T00:00:00Z",
+    reactions: null,
   };
 }
 
@@ -39,6 +40,7 @@ function scenario(overrides?: {
       hasMore={overrides?.hasMore ?? false}
       onLoadMore={onLoadMore}
       channelName={overrides?.channelName ?? "general"}
+      onReactionToggle={vi.fn()}
     />,
   );
 

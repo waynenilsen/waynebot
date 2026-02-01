@@ -3,6 +3,7 @@ import type {
   AgentStatusResponse,
   AuthResponse,
   Channel,
+  DMChannel,
   ReactionCount,
   Invite,
   LLMCall,
@@ -237,6 +238,20 @@ export async function removeReaction(
       body: JSON.stringify({ emoji }),
     },
   );
+}
+
+export async function listDMs(): Promise<DMChannel[]> {
+  return apiFetch<DMChannel[]>("/api/dms");
+}
+
+export async function createDM(opts: {
+  user_id?: number;
+  persona_id?: number;
+}): Promise<DMChannel> {
+  return apiFetch<DMChannel>("/api/dms", {
+    method: "POST",
+    body: JSON.stringify(opts),
+  });
 }
 
 export { ApiError };

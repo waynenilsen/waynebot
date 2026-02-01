@@ -5,16 +5,20 @@ import type { Message, ReactionEvent, WsEvent } from "../types";
 import { useApp } from "../store/AppContext";
 
 export function useWebSocket(authenticated: boolean) {
-  const { state, addMessage, incrementUnread, updateReactions } = useApp();
+  const { state, addMessage, incrementUnread, incrementDMUnread, updateReactions } =
+    useApp();
   const [connected, setConnected] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
   const connRef = useRef<ReturnType<typeof connectWs> | null>(null);
   const currentChannelRef = useRef<number | null>(null);
   const userIdRef = useRef<number | null>(null);
 
+  const dmIdsRef = useRef<Set<number>>(new Set());
+
   // Keep refs in sync without triggering reconnection.
   currentChannelRef.current = state.currentChannelId;
   userIdRef.current = state.user?.id ?? null;
+  dmIdsRef.current = new Set(state.dms.map((d) => d.id));
 
   useEffect(() => {
     if (!authenticated) {
@@ -37,7 +41,11 @@ export function useWebSocket(authenticated: boolean) {
             msg.channel_id !== currentChannelRef.current &&
             msg.author_id !== userIdRef.current
           ) {
-            incrementUnread(msg.channel_id);
+            if (dmIdsRef.current.has(msg.channel_id)) {
+              incrementDMUnread(msg.channel_id);
+            } else {
+              incrementUnread(msg.channel_id);
+            }
           }
         } else if (
           event.type === "new_reaction" ||
@@ -70,7 +78,7 @@ export function useWebSocket(authenticated: boolean) {
     return () => {
       conn.close();
     };
-  }, [authenticated, addMessage, incrementUnread, updateReactions]);
+  }, [authenticated, addMessage, incrementUnread, incrementDMUnread, updateReactions]);
 
   return { connected, wasConnected };
 }

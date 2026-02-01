@@ -53,6 +53,7 @@ const msg: Message = {
   author_name: "alice",
   content: "hello world",
   created_at: "2024-01-01T00:00:00Z",
+  reactions: null,
 };
 
 describe("AppContext", () => {

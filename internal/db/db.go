@@ -10,7 +10,7 @@ import (
 
 // DB wraps a *sql.DB with a write mutex to serialize all writes.
 type DB struct {
-	SQL    *sql.DB
+	SQL     *sql.DB
 	writeMu sync.Mutex
 }
 

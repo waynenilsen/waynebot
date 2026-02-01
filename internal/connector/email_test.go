@@ -96,7 +96,7 @@ func newEmailScenario(t *testing.T) *emailScenario {
 	d := openTestDB(t)
 	hub := startTestHub(t)
 
-	ch, err := model.CreateChannel(d, "email-inbox", "incoming email")
+	ch, err := model.CreateChannel(d, "email-inbox", "incoming email", 0)
 	if err != nil {
 		t.Fatalf("create channel: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestFormatEmailNoDate(t *testing.T) {
 func TestDefaultPollEvery(t *testing.T) {
 	d := openTestDB(t)
 	hub := startTestHub(t)
-	ch, _ := model.CreateChannel(d, "test", "")
+	ch, _ := model.CreateChannel(d, "test", "", 0)
 
 	conn := NewEmailConnector(EmailConfig{ChannelID: ch.ID}, &mockIMAP{}, d, hub)
 	if conn.cfg.PollEvery != 60*time.Second {

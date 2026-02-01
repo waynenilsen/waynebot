@@ -32,7 +32,9 @@ func scanChannel(s interface{ Scan(...any) error }) (Channel, error) {
 
 const channelCols = "id, name, description, is_dm, created_by, created_at"
 
-func CreateChannel(d *db.DB, name, description string) (Channel, error) {
+// CreateChannel creates a non-DM channel. If ownerUserID > 0, the user is
+// atomically added as an "owner" member within the same transaction.
+func CreateChannel(d *db.DB, name, description string, ownerUserID int64) (Channel, error) {
 	var ch Channel
 	err := d.WriteTx(func(tx *sql.Tx) error {
 		res, err := tx.Exec(
@@ -45,6 +47,14 @@ func CreateChannel(d *db.DB, name, description string) (Channel, error) {
 		id, err := res.LastInsertId()
 		if err != nil {
 			return err
+		}
+		if ownerUserID > 0 {
+			if _, err := tx.Exec(
+				"INSERT INTO channel_members (channel_id, user_id, role) VALUES (?, ?, 'owner')",
+				id, ownerUserID,
+			); err != nil {
+				return fmt.Errorf("add owner membership: %w", err)
+			}
 		}
 		return tx.QueryRow(
 			"SELECT "+channelCols+" FROM channels WHERE id = ?", id,

@@ -105,8 +105,8 @@ func TestSubscribeUnsubscribeChannel(t *testing.T) {
 	d := openTestDB(t)
 
 	p, _ := model.CreatePersona(d, "bot", "p", "m", []string{}, 0.5, 1024, 10, 50000)
-	ch1, _ := model.CreateChannel(d, "general", "")
-	ch2, _ := model.CreateChannel(d, "random", "")
+	ch1, _ := model.CreateChannel(d, "general", "", 0)
+	ch2, _ := model.CreateChannel(d, "random", "", 0)
 
 	model.SubscribeChannel(d, p.ID, ch1.ID)
 	model.SubscribeChannel(d, p.ID, ch2.ID)
@@ -133,7 +133,7 @@ func TestSubscribeChannelIdempotent(t *testing.T) {
 	d := openTestDB(t)
 
 	p, _ := model.CreatePersona(d, "bot", "p", "m", []string{}, 0.5, 1024, 10, 50000)
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	model.SubscribeChannel(d, p.ID, ch.ID)
 	err := model.SubscribeChannel(d, p.ID, ch.ID)

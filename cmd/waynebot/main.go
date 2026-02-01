@@ -66,7 +66,7 @@ func main() {
 	if cfg.IMAPHost != "" {
 		ch, err := model.GetChannelByName(database, cfg.IMAPChannel)
 		if err != nil {
-			ch, err = model.CreateChannel(database, cfg.IMAPChannel, "incoming email")
+			ch, err = model.CreateChannel(database, cfg.IMAPChannel, "incoming email", 0)
 			if err != nil {
 				slog.Error("failed to create email channel", "error", err)
 				os.Exit(1)

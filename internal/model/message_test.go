@@ -10,7 +10,7 @@ func TestCreateMessage(t *testing.T) {
 	d := openTestDB(t)
 
 	u, _ := model.CreateUser(d, "alice", "hash")
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	m, err := model.CreateMessage(d, ch.ID, u.ID, "human", "alice", "hello world")
 	if err != nil {
@@ -28,7 +28,7 @@ func TestGetRecentMessages(t *testing.T) {
 	d := openTestDB(t)
 
 	u, _ := model.CreateUser(d, "alice", "hash")
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	for i := range 5 {
 		model.CreateMessage(d, ch.ID, u.ID, "human", "alice", "msg"+string(rune('0'+i)))
@@ -51,7 +51,7 @@ func TestGetMessagesBefore(t *testing.T) {
 	d := openTestDB(t)
 
 	u, _ := model.CreateUser(d, "alice", "hash")
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	var ids []int64
 	for i := range 5 {
@@ -77,7 +77,7 @@ func TestGetMessagesSince(t *testing.T) {
 	d := openTestDB(t)
 
 	u, _ := model.CreateUser(d, "alice", "hash")
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	var ids []int64
 	for i := range 5 {
@@ -107,8 +107,8 @@ func TestMessagesIsolatedByChannel(t *testing.T) {
 	d := openTestDB(t)
 
 	u, _ := model.CreateUser(d, "alice", "hash")
-	ch1, _ := model.CreateChannel(d, "ch1", "")
-	ch2, _ := model.CreateChannel(d, "ch2", "")
+	ch1, _ := model.CreateChannel(d, "ch1", "", 0)
+	ch2, _ := model.CreateChannel(d, "ch2", "", 0)
 
 	model.CreateMessage(d, ch1.ID, u.ID, "human", "alice", "in ch1")
 	model.CreateMessage(d, ch2.ID, u.ID, "human", "alice", "in ch2")

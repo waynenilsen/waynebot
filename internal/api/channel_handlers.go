@@ -125,18 +125,12 @@ func (h *ChannelHandler) CreateChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ch, err := model.CreateChannel(h.DB, req.Name, req.Description)
+	ch, err := model.CreateChannel(h.DB, req.Name, req.Description, user.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			ErrorResponse(w, http.StatusConflict, "channel name already taken")
 			return
 		}
-		ErrorResponse(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	// Auto-add creator as channel owner.
-	if err := model.AddChannelMember(h.DB, ch.ID, user.ID, "owner"); err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "internal error")
 		return
 	}

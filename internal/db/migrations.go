@@ -190,6 +190,22 @@ CREATE TABLE channel_members (
 CREATE INDEX idx_channel_members_user ON channel_members(user_id);
 `,
 	},
+	{
+		Version: 7,
+		SQL: `
+-- Backfill: add all existing users as owners of all existing non-DM channels
+-- that have no members yet. This prevents channels from disappearing after
+-- membership-based visibility filtering was introduced.
+INSERT OR IGNORE INTO channel_members (channel_id, user_id, role)
+SELECT c.id, u.id, 'owner'
+FROM channels c
+CROSS JOIN users u
+WHERE c.is_dm = 0
+  AND NOT EXISTS (
+    SELECT 1 FROM channel_members cm WHERE cm.channel_id = c.id
+  );
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

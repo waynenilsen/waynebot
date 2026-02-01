@@ -9,7 +9,7 @@ import (
 func TestAddChannelMember(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 	alice, _ := model.CreateUser(d, "alice", "hash")
 
 	if err := model.AddChannelMember(d, ch.ID, alice.ID, "owner"); err != nil {
@@ -28,7 +28,7 @@ func TestAddChannelMember(t *testing.T) {
 func TestAddChannelMemberIdempotent(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 	alice, _ := model.CreateUser(d, "alice", "hash")
 
 	model.AddChannelMember(d, ch.ID, alice.ID, "owner")
@@ -48,7 +48,7 @@ func TestAddChannelMemberIdempotent(t *testing.T) {
 func TestRemoveChannelMember(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 	alice, _ := model.CreateUser(d, "alice", "hash")
 
 	model.AddChannelMember(d, ch.ID, alice.ID, "member")
@@ -65,7 +65,7 @@ func TestRemoveChannelMember(t *testing.T) {
 func TestGetChannelMembers(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 	alice, _ := model.CreateUser(d, "alice", "hash")
 	bob, _ := model.CreateUser(d, "bob", "hash")
 
@@ -91,7 +91,7 @@ func TestGetChannelMembers(t *testing.T) {
 func TestIsChannelMemberNotMember(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 	alice, _ := model.CreateUser(d, "alice", "hash")
 
 	ok, err := model.IsChannelMember(d, ch.ID, alice.ID)
@@ -109,9 +109,9 @@ func TestListChannelsForUser(t *testing.T) {
 	alice, _ := model.CreateUser(d, "alice", "hash")
 	bob, _ := model.CreateUser(d, "bob", "hash")
 
-	ch1, _ := model.CreateChannel(d, "general", "")
-	ch2, _ := model.CreateChannel(d, "random", "")
-	model.CreateChannel(d, "secret", "")
+	ch1, _ := model.CreateChannel(d, "general", "", 0)
+	ch2, _ := model.CreateChannel(d, "random", "", 0)
+	model.CreateChannel(d, "secret", "", 0)
 
 	model.AddChannelMember(d, ch1.ID, alice.ID, "member")
 	model.AddChannelMember(d, ch2.ID, alice.ID, "member")
@@ -140,7 +140,7 @@ func TestListChannelsForUserExcludesDMs(t *testing.T) {
 	alice, _ := model.CreateUser(d, "alice", "hash")
 	bob, _ := model.CreateUser(d, "bob", "hash")
 
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 	model.AddChannelMember(d, ch.ID, alice.ID, "member")
 
 	p1 := model.DMParticipant{UserID: &alice.ID}
@@ -159,7 +159,7 @@ func TestListChannelsForUserExcludesDMs(t *testing.T) {
 func TestChannelMembersCascadeOnChannelDelete(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "doomed", "")
+	ch, _ := model.CreateChannel(d, "doomed", "", 0)
 	alice, _ := model.CreateUser(d, "alice", "hash")
 	model.AddChannelMember(d, ch.ID, alice.ID, "member")
 

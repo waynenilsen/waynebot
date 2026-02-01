@@ -10,7 +10,7 @@ import (
 func TestCreateChannel(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, err := model.CreateChannel(d, "general", "General discussion")
+	ch, err := model.CreateChannel(d, "general", "General discussion", 0)
 	if err != nil {
 		t.Fatalf("CreateChannel: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestCreateChannel(t *testing.T) {
 func TestGetChannel(t *testing.T) {
 	d := openTestDB(t)
 
-	created, _ := model.CreateChannel(d, "random", "Random stuff")
+	created, _ := model.CreateChannel(d, "random", "Random stuff", 0)
 	got, err := model.GetChannel(d, created.ID)
 	if err != nil {
 		t.Fatalf("GetChannel: %v", err)
@@ -41,7 +41,7 @@ func TestGetChannel(t *testing.T) {
 func TestGetChannelByName(t *testing.T) {
 	d := openTestDB(t)
 
-	model.CreateChannel(d, "help", "Help channel")
+	model.CreateChannel(d, "help", "Help channel", 0)
 	got, err := model.GetChannelByName(d, "help")
 	if err != nil {
 		t.Fatalf("GetChannelByName: %v", err)
@@ -54,7 +54,7 @@ func TestGetChannelByName(t *testing.T) {
 func TestUpdateChannel(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "old", "old desc")
+	ch, _ := model.CreateChannel(d, "old", "old desc", 0)
 	if err := model.UpdateChannel(d, ch.ID, "new", "new desc"); err != nil {
 		t.Fatalf("UpdateChannel: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestUpdateChannel(t *testing.T) {
 func TestDeleteChannel(t *testing.T) {
 	d := openTestDB(t)
 
-	ch, _ := model.CreateChannel(d, "doomed", "")
+	ch, _ := model.CreateChannel(d, "doomed", "", 0)
 	if err := model.DeleteChannel(d, ch.ID); err != nil {
 		t.Fatalf("DeleteChannel: %v", err)
 	}
@@ -83,8 +83,8 @@ func TestDeleteChannel(t *testing.T) {
 func TestListChannels(t *testing.T) {
 	d := openTestDB(t)
 
-	model.CreateChannel(d, "a", "")
-	model.CreateChannel(d, "b", "")
+	model.CreateChannel(d, "a", "", 0)
+	model.CreateChannel(d, "b", "", 0)
 	channels, err := model.ListChannels(d)
 	if err != nil {
 		t.Fatalf("ListChannels: %v", err)
@@ -97,8 +97,8 @@ func TestListChannels(t *testing.T) {
 func TestCreateChannelDuplicateName(t *testing.T) {
 	d := openTestDB(t)
 
-	model.CreateChannel(d, "unique", "")
-	_, err := model.CreateChannel(d, "unique", "")
+	model.CreateChannel(d, "unique", "", 0)
+	_, err := model.CreateChannel(d, "unique", "", 0)
 	if err == nil {
 		t.Error("expected error for duplicate name")
 	}
@@ -109,7 +109,7 @@ func TestListChannelsExcludesDMs(t *testing.T) {
 
 	alice, _ := model.CreateUser(d, "alice", "hash")
 	bob, _ := model.CreateUser(d, "bob", "hash")
-	model.CreateChannel(d, "general", "")
+	model.CreateChannel(d, "general", "", 0)
 
 	p1 := model.DMParticipant{UserID: &alice.ID}
 	p2 := model.DMParticipant{UserID: &bob.ID}

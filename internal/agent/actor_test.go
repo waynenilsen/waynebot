@@ -65,7 +65,7 @@ func newScenario(t *testing.T) *scenario {
 		t.Fatalf("create persona: %v", err)
 	}
 
-	ch, err := model.CreateChannel(d, "general", "")
+	ch, err := model.CreateChannel(d, "general", "", 0)
 	if err != nil {
 		t.Fatalf("create channel: %v", err)
 	}

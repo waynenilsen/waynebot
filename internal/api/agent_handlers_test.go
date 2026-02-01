@@ -219,7 +219,7 @@ func TestAgentLLMCallsWithData(t *testing.T) {
 	token := registerUser(t, router, "alice", "password123", "")
 
 	p, _ := model.CreatePersona(d, "bot", "prompt", "model", nil, 0.7, 100, 0, 0)
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	seedLLMCall(t, d, p.ID, ch.ID)
 	seedLLMCall(t, d, p.ID, ch.ID)
@@ -294,7 +294,7 @@ func TestAgentStats(t *testing.T) {
 	token := registerUser(t, router, "alice", "password123", "")
 
 	p, _ := model.CreatePersona(d, "bot", "prompt", "model", nil, 0.7, 100, 0, 0)
-	ch, _ := model.CreateChannel(d, "general", "")
+	ch, _ := model.CreateChannel(d, "general", "", 0)
 
 	seedLLMCall(t, d, p.ID, ch.ID)
 	seedLLMCall(t, d, p.ID, ch.ID)

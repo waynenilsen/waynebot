@@ -9,3 +9,9 @@ Pay down tech debt accumulated during feature development. General cleanup pass.
 - **DRY violations**: Identify and refactor repeated logic into shared utilities/hooks/helpers.
 - **Missing tests**: Add tests for important areas, especially new features (DMs, projects, @refs, memory). Follow the fluent test pattern from CLAUDE.md (`scenario().withUser(alice()).withChannel(help())...run()`).
 - **General cleanup**: Dead code removal, consistent naming, proper error handling, any mess left behind by previous crumbs.
+
+don't go nuts here but just do clear stuff if something is fucked up go ahead and refactor it
+
+can include files that are too large and should be split/barreled
+
+can include overly flat folder structures with too many things disorganized

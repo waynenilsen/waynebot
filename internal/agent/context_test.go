@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -329,6 +330,143 @@ func TestAssembleContextWithoutAgentsMd(t *testing.T) {
 
 	if budget.AgentsmdTokens != 0 {
 		t.Errorf("expected 0 AgentsmdTokens without AGENTS.md, got %d", budget.AgentsmdTokens)
+	}
+}
+
+func TestAssembleContextWithProjectDocuments(t *testing.T) {
+	d := openTestDB(t)
+
+	persona, err := model.CreatePersona(d, "docsbot", "Base prompt.", "test-model",
+		nil, 0.7, 100, 0, 0)
+	if err != nil {
+		t.Fatalf("create persona: %v", err)
+	}
+
+	ch, err := model.CreateChannel(d, "docs-test", "", 0)
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+
+	projDir := t.TempDir()
+	waynebotDir := filepath.Join(projDir, ".waynebot")
+	if err := os.MkdirAll(waynebotDir, 0755); err != nil {
+		t.Fatalf("mkdir .waynebot: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(waynebotDir, "erd.md"), []byte("# ERD\nUsers -> Posts -> Comments"), 0644); err != nil {
+		t.Fatalf("write erd.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(waynebotDir, "prd.md"), []byte("# PRD\nBuild a chat app with AI agents."), 0644); err != nil {
+		t.Fatalf("write prd.md: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(waynebotDir, "decisions.md"), []byte("## Use SQLite\nWe chose SQLite for simplicity.\n---\n## Use Go\nGo is fast and simple."), 0644); err != nil {
+		t.Fatalf("write decisions.md: %v", err)
+	}
+
+	proj, err := model.CreateProject(d, "docsproj", projDir, "A project with docs")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	_, err = model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello")
+	if err != nil {
+		t.Fatalf("create message: %v", err)
+	}
+
+	history, _ := model.GetRecentMessages(d, ch.ID, 50)
+	reverseMessages(history)
+
+	assembler := &ContextAssembler{DB: d}
+
+	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+		Persona:   persona,
+		ChannelID: ch.ID,
+		Projects:  []model.Project{proj},
+		History:   history,
+	})
+
+	sysContent := msgs[0].OfSystem.Content.OfString.Value
+
+	if !strings.Contains(sysContent, "## Project Documents") {
+		t.Error("system message should contain Project Documents header")
+	}
+	if !strings.Contains(sysContent, "Users -> Posts -> Comments") {
+		t.Error("system message should contain ERD content")
+	}
+	if !strings.Contains(sysContent, "Build a chat app with AI agents") {
+		t.Error("system message should contain PRD content")
+	}
+	if !strings.Contains(sysContent, "Use SQLite") {
+		t.Error("system message should contain decisions content")
+	}
+	if budget.DocumentTokens == 0 {
+		t.Error("expected non-zero DocumentTokens in budget")
+	}
+}
+
+func TestAssembleContextWithoutProjectDocuments(t *testing.T) {
+	d := openTestDB(t)
+
+	persona, err := model.CreatePersona(d, "nodocsbot", "Base prompt.", "test-model",
+		nil, 0.7, 100, 0, 0)
+	if err != nil {
+		t.Fatalf("create persona: %v", err)
+	}
+
+	ch, err := model.CreateChannel(d, "nodocs-test", "", 0)
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+
+	// Project with no .waynebot directory.
+	proj, err := model.CreateProject(d, "nodocsproject", t.TempDir(), "No docs")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	_, err = model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello")
+	if err != nil {
+		t.Fatalf("create message: %v", err)
+	}
+
+	history, _ := model.GetRecentMessages(d, ch.ID, 50)
+	reverseMessages(history)
+
+	assembler := &ContextAssembler{DB: d}
+
+	_, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+		Persona:   persona,
+		ChannelID: ch.ID,
+		Projects:  []model.Project{proj},
+		History:   history,
+	})
+
+	if budget.DocumentTokens != 0 {
+		t.Errorf("expected 0 DocumentTokens without .waynebot dir, got %d", budget.DocumentTokens)
+	}
+}
+
+func TestTruncateDecisions(t *testing.T) {
+	// Create 25 entries separated by ## headers.
+	var sb strings.Builder
+	for i := 1; i <= 25; i++ {
+		if i > 1 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(fmt.Sprintf("## Decision %d\nSome details about decision %d.\n", i, i))
+	}
+
+	result := truncateDecisions(sb.String(), 20)
+
+	// Should contain the last 20 entries (6-25) but not the first 5.
+	if strings.Contains(result, "Decision 5\n") {
+		t.Error("truncated decisions should not contain early entries")
+	}
+	if !strings.Contains(result, "Decision 6") {
+		t.Error("truncated decisions should contain entry 6")
+	}
+	if !strings.Contains(result, "Decision 25") {
+		t.Error("truncated decisions should contain the last entry")
 	}
 }
 

@@ -27,6 +27,7 @@ type ContextBudget struct {
 	SystemTokens    int
 	ProjectTokens   int
 	AgentsmdTokens  int
+	DocumentTokens  int
 	MemoryTokens    int
 	HistoryTokens   int
 	HistoryMessages int
@@ -55,9 +56,10 @@ func EstimateTokens(text string) int {
 
 // AssembleContext builds the message array with priority ordering:
 // 1. System prompt (always)
-// 2. Project context (if any)
-// 3. Retrieved memories (semantic search)
-// 4. Channel message history (fills remaining budget)
+// 2. Project context + AGENTS.md (if project associated)
+// 3. Project documents — erd, prd, recent decisions (if they exist)
+// 4. Retrieved memories (semantic search)
+// 5. Channel message history (fills remaining budget)
 func (ca *ContextAssembler) AssembleContext(ctx context.Context, input AssembleInput) ([]openai.ChatCompletionMessageParamUnion, ContextBudget) {
 	budget := ContextBudget{}
 	tokenLimit := input.TokenLimit
@@ -79,6 +81,13 @@ func (ca *ContextAssembler) AssembleContext(ctx context.Context, input AssembleI
 		if agentsmdBlock != "" {
 			systemPrompt += agentsmdBlock
 			budget.AgentsmdTokens = EstimateTokens(agentsmdBlock)
+		}
+
+		// Read project documents (erd.md, prd.md, decisions.md) if they exist.
+		docsBlock := readProjectDocuments(input.Projects[0].Path)
+		if docsBlock != "" {
+			systemPrompt += docsBlock
+			budget.DocumentTokens = EstimateTokens(docsBlock)
 		}
 	}
 	budget.SystemTokens = EstimateTokens(systemPrompt)
@@ -215,6 +224,12 @@ func formatProjectContext(projects []model.Project) string {
 // maxAgentsmdChars is the maximum character length for AGENTS.md content (~4000 tokens).
 const maxAgentsmdChars = 16_000
 
+// maxDocumentChars is the maximum total character length for project documents (~8000 tokens).
+const maxDocumentChars = 32_000
+
+// maxDecisionEntries is the max number of recent decision entries to include.
+const maxDecisionEntries = 20
+
 // readAgentsMd reads AGENTS.md from a project root and returns a formatted block.
 // Returns empty string if the file doesn't exist or can't be read.
 func readAgentsMd(projectPath string) string {
@@ -230,6 +245,113 @@ func readAgentsMd(projectPath string) string {
 		return ""
 	}
 	return "\n\n## Project Instructions (AGENTS.md)\n" + content
+}
+
+// readProjectDocuments reads erd.md, prd.md, and decisions.md from a project's
+// .waynebot/ directory and returns a formatted block. Returns empty string if
+// the directory doesn't exist or no documents are found.
+func readProjectDocuments(projectPath string) string {
+	waynebotDir := filepath.Join(projectPath, ".waynebot")
+	if _, err := os.Stat(waynebotDir); os.IsNotExist(err) {
+		return ""
+	}
+
+	type doc struct {
+		name    string
+		file    string
+		content string
+	}
+
+	// Read in priority order: erd > prd > decisions.
+	docs := []doc{
+		{name: "ERD (Entity Relationship Diagram)", file: "erd.md"},
+		{name: "PRD (Product Requirements)", file: "prd.md"},
+		{name: "Recent Decisions", file: "decisions.md"},
+	}
+
+	totalChars := 0
+	var included []doc
+
+	for _, d := range docs {
+		data, err := os.ReadFile(filepath.Join(waynebotDir, d.file))
+		if err != nil {
+			continue
+		}
+		content := strings.TrimSpace(string(data))
+		if content == "" {
+			continue
+		}
+
+		// For decisions, only keep the last N entries.
+		if d.file == "decisions.md" {
+			content = truncateDecisions(content, maxDecisionEntries)
+		}
+
+		// Check if adding this doc would exceed the budget.
+		if totalChars+len(content) > maxDocumentChars {
+			// Truncate to fit remaining budget.
+			remaining := maxDocumentChars - totalChars
+			if remaining > 0 {
+				d.content = content[:remaining]
+				totalChars += remaining
+				included = append(included, d)
+			}
+			break
+		}
+
+		d.content = content
+		totalChars += len(content)
+		included = append(included, d)
+	}
+
+	if len(included) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("\n\n## Project Documents\n")
+	for _, d := range included {
+		sb.WriteString(fmt.Sprintf("\n### %s\n%s\n", d.name, d.content))
+	}
+	return sb.String()
+}
+
+// truncateDecisions keeps only the last N entries from a decisions document.
+// Entries are separated by "---" lines or "## " headers.
+func truncateDecisions(content string, maxEntries int) string {
+	lines := strings.Split(content, "\n")
+	var entries [][]string
+	var current []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" || strings.HasPrefix(trimmed, "## ") {
+			if len(current) > 0 {
+				entries = append(entries, current)
+			}
+			current = []string{line}
+		} else {
+			current = append(current, line)
+		}
+	}
+	if len(current) > 0 {
+		entries = append(entries, current)
+	}
+
+	if len(entries) <= maxEntries {
+		return content
+	}
+
+	// Keep only the last maxEntries.
+	entries = entries[len(entries)-maxEntries:]
+	var sb strings.Builder
+	for i, entry := range entries {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(strings.Join(entry, "\n"))
+	}
+	return sb.String()
 }
 
 // buildSingleMessage converts a single domain message to an OpenAI message param.

@@ -228,6 +228,27 @@ CREATE TABLE channel_projects (
 );
 `,
 	},
+	{
+		Version: 10,
+		SQL: `
+CREATE TABLE memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    persona_id INTEGER NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
+    channel_id INTEGER,
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('fact', 'decision', 'preference', 'summary', 'erd', 'prd', 'decision_log', 'note')),
+    content TEXT NOT NULL,
+    embedding BLOB,
+    source_message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_memories_persona ON memories(persona_id);
+CREATE INDEX idx_memories_channel ON memories(channel_id);
+CREATE INDEX idx_memories_project ON memories(project_id);
+CREATE INDEX idx_memories_kind ON memories(kind);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

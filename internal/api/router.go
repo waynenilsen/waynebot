@@ -77,6 +77,12 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		r.With(auth.RequireAuth).Put("/personas/{id}", ph.UpdatePersona)
 		r.With(auth.RequireAuth).Delete("/personas/{id}", ph.DeletePersona)
 
+		prh := &ProjectHandler{DB: database}
+		r.With(auth.RequireAuth).Get("/projects", prh.ListProjects)
+		r.With(auth.RequireAuth).Post("/projects", prh.CreateProject)
+		r.With(auth.RequireAuth).Put("/projects/{id}", prh.UpdateProject)
+		r.With(auth.RequireAuth).Delete("/projects/{id}", prh.DeleteProject)
+
 		r.With(auth.RequireAuth).Post("/invites", ih.CreateInvite)
 		r.With(auth.RequireAuth).Get("/invites", ih.ListInvites)
 

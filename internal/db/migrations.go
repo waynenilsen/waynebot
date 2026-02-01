@@ -177,6 +177,19 @@ CREATE INDEX idx_dm_participants_user ON dm_participants(user_id);
 CREATE INDEX idx_dm_participants_persona ON dm_participants(persona_id);
 `,
 	},
+	{
+		Version: 6,
+		SQL: `
+CREATE TABLE channel_members (
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role       TEXT NOT NULL DEFAULT 'member' CHECK(role IN ('owner', 'member')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (channel_id, user_id)
+);
+CREATE INDEX idx_channel_members_user ON channel_members(user_id);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

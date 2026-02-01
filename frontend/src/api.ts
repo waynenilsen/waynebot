@@ -12,6 +12,7 @@ import type {
   MentionTarget,
   Message,
   Persona,
+  PersonaTemplate,
   Project,
   ProjectDocument,
   ProjectDocumentList,
@@ -137,6 +138,10 @@ export async function markChannelRead(
     `/api/channels/${channelId}/read`,
     { method: "POST" },
   );
+}
+
+export async function getPersonaTemplates(): Promise<PersonaTemplate[]> {
+  return apiFetch<PersonaTemplate[]>("/api/personas/templates");
 }
 
 export async function getPersonas(): Promise<Persona[]> {

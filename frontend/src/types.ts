@@ -51,6 +51,16 @@ export interface Persona {
   created_at: string;
 }
 
+export interface PersonaTemplate {
+  name: string;
+  system_prompt: string;
+  model: string;
+  tools_enabled: string[];
+  temperature: number;
+  max_tokens: number;
+  cooldown_secs: number;
+}
+
 export interface Invite {
   id: number;
   code: string;

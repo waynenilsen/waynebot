@@ -75,6 +75,11 @@ type validationError struct {
 
 func (e *validationError) Error() string { return e.msg }
 
+// ListTemplates returns the built-in persona templates.
+func (h *PersonaHandler) ListTemplates(w http.ResponseWriter, _ *http.Request) {
+	WriteJSON(w, http.StatusOK, model.PersonaTemplates())
+}
+
 // ListPersonas returns all personas.
 func (h *PersonaHandler) ListPersonas(w http.ResponseWriter, r *http.Request) {
 	personas, err := model.ListPersonas(h.DB)

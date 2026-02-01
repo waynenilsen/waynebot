@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import type { Persona } from "../types";
+import type { Persona, PersonaTemplate } from "../types";
+import { getPersonaTemplates } from "../api";
 import { getErrorMessage } from "../utils/errors";
 import { inputClass, labelClass } from "../utils/styles";
 
@@ -11,7 +12,6 @@ interface PersonaFormProps {
   onSubmit: (data: PersonaData) => Promise<void>;
   onCancel: () => void;
 }
-
 
 export default function PersonaForm({
   initial,
@@ -34,6 +34,26 @@ export default function PersonaForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const [templates, setTemplates] = useState<PersonaTemplate[]>([]);
+
+  useEffect(() => {
+    if (!initial) {
+      getPersonaTemplates()
+        .then(setTemplates)
+        .catch(() => {});
+    }
+  }, [initial]);
+
+  function applyTemplate(t: PersonaTemplate) {
+    setName(t.name);
+    setSystemPrompt(t.system_prompt);
+    setModel(t.model);
+    setTemperature(t.temperature);
+    setMaxTokens(t.max_tokens);
+    setCooldownSecs(t.cooldown_secs);
+    setToolsRaw(t.tools_enabled.join(", "));
+  }
 
   const nameValid = name.length >= 1 && name.length <= 100;
   const promptValid = systemPrompt.length >= 1 && systemPrompt.length <= 50000;
@@ -87,6 +107,29 @@ export default function PersonaForm({
           </p>
         </div>
       </div>
+
+      {/* Template selector — only for new personas */}
+      {!initial && templates.length > 0 && (
+        <div>
+          <label className={labelClass}>Start from template</label>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((t) => (
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => applyTemplate(t)}
+                className={`text-xs px-3 py-1.5 rounded border transition-colors cursor-pointer font-mono ${
+                  name === t.name
+                    ? "bg-[#e2b714]/20 border-[#e2b714]/40 text-[#e2b714]"
+                    : "bg-[#0f3460]/30 border-[#e2b714]/10 text-[#a0a0b8]/70 hover:border-[#e2b714]/25 hover:text-[#a0a0b8]"
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div

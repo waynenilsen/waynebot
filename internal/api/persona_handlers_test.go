@@ -22,6 +22,38 @@ func createPersona(t *testing.T, router http.Handler, token, name, systemPrompt 
 	return resp.ID
 }
 
+func TestListPersonaTemplates(t *testing.T) {
+	d := openTestDB(t)
+	router := newTestRouter(t, d)
+	token := registerUser(t, router, "alice", "password123", "")
+
+	rec := doJSON(t, router, "GET", "/api/personas/templates", "", "Authorization", "Bearer "+token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var resp []struct {
+		Name         string `json:"name"`
+		SystemPrompt string `json:"system_prompt"`
+		Model        string `json:"model"`
+	}
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if len(resp) < 3 {
+		t.Errorf("expected at least 3 templates, got %d", len(resp))
+	}
+	for _, tmpl := range resp {
+		if tmpl.Name == "" {
+			t.Error("template has empty name")
+		}
+		if tmpl.SystemPrompt == "" {
+			t.Error("template has empty system_prompt")
+		}
+		if tmpl.Model == "" {
+			t.Error("template has empty model")
+		}
+	}
+}
+
 func TestListPersonasEmpty(t *testing.T) {
 	d := openTestDB(t)
 	router := newTestRouter(t, d)

@@ -28,15 +28,16 @@ const (
 // Actor is the per-persona processing loop. It listens for notifications from the
 // WebSocket hub and processes new messages in subscribed channels.
 type Actor struct {
-	Persona  model.Persona
-	DB       *db.DB
-	Hub      *ws.Hub
-	LLM      LLMClient
-	Tools    *tools.Registry
-	Status   *StatusTracker
-	Cursors  *CursorStore
-	Decision *DecisionMaker
-	Budget   *BudgetChecker
+	Persona   model.Persona
+	DB        *db.DB
+	Hub       *ws.Hub
+	LLM       LLMClient
+	Embedding EmbeddingClient
+	Tools     *tools.Registry
+	Status    *StatusTracker
+	Cursors   *CursorStore
+	Decision  *DecisionMaker
+	Budget    *BudgetChecker
 }
 
 // Run starts the actor's processing loop. It blocks until ctx is cancelled.
@@ -139,12 +140,27 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 		slog.Error("actor: list channel projects", "persona", a.Persona.Name, "channel_id", ch.ID, "error", err)
 	}
 
-	persona := a.Persona
-	if len(projects) > 0 {
-		persona = enrichPersonaPrompt(persona, projects)
+	// Use the context assembler to build messages with RAG.
+	assembler := &ContextAssembler{
+		DB:        a.DB,
+		Embedding: a.Embedding,
+	}
+	messages, budget := assembler.AssembleContext(ctx, AssembleInput{
+		Persona:   a.Persona,
+		ChannelID: ch.ID,
+		Projects:  projects,
+		History:   history,
+	})
+
+	if budget.Exhausted {
+		slog.Info("actor: context budget exhausted",
+			"persona", a.Persona.Name,
+			"channel_id", ch.ID,
+			"history_messages", budget.HistoryMessages,
+			"memory_tokens", budget.MemoryTokens,
+		)
 	}
 
-	messages := llm.BuildMessages(persona, history)
 	toolDefs := llm.ToolsForPersona(a.Persona.ToolsEnabled)
 
 	for round := 0; round < maxToolRounds; round++ {
@@ -301,19 +317,6 @@ func (a *Actor) recordToolExecution(toolName, argsJSON, output, errText string, 
 			"created_at":  time.Now().UTC().Format(time.RFC3339),
 		},
 	})
-}
-
-// enrichPersonaPrompt returns a copy of the persona with project information appended
-// to the system prompt so the agent knows about the associated project(s).
-func enrichPersonaPrompt(p model.Persona, projects []model.Project) model.Persona {
-	enriched := p
-	enriched.SystemPrompt += "\n\n## Project Context\n"
-	enriched.SystemPrompt += fmt.Sprintf("This channel is associated with the project **%s**.", projects[0].Name)
-	if projects[0].Description != "" {
-		enriched.SystemPrompt += "\nDescription: " + projects[0].Description
-	}
-	enriched.SystemPrompt += "\nFile tools (file_read, file_write, shell_exec) are scoped to the project directory."
-	return enriched
 }
 
 // reverseMessages reverses a slice of messages in place.

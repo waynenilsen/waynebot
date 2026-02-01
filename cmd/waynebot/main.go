@@ -15,6 +15,7 @@ import (
 	"github.com/waynenilsen/waynebot/internal/config"
 	"github.com/waynenilsen/waynebot/internal/connector"
 	"github.com/waynenilsen/waynebot/internal/db"
+	"github.com/waynenilsen/waynebot/internal/embedding"
 	"github.com/waynenilsen/waynebot/internal/llm"
 	"github.com/waynenilsen/waynebot/internal/model"
 	"github.com/waynenilsen/waynebot/internal/tools"
@@ -54,7 +55,8 @@ func main() {
 		},
 	})
 	toolsRegistry.Register("message_react", tools.MessageReact(database, hub))
-	supervisor := agent.NewSupervisor(database, hub, llmClient, toolsRegistry)
+	embeddingClient := embedding.NewClient(cfg.OpenRouterKey)
+	supervisor := agent.NewSupervisor(database, hub, llmClient, embeddingClient, toolsRegistry)
 
 	if err := supervisor.StartAll(); err != nil {
 		slog.Error("failed to start agent supervisor", "error", err)

@@ -13,14 +13,15 @@ import (
 
 // Supervisor manages actor goroutines, one per persona.
 type Supervisor struct {
-	DB       *db.DB
-	Hub      *ws.Hub
-	LLM      LLMClient
-	Tools    *tools.Registry
-	Status   *StatusTracker
-	Cursors  *CursorStore
-	Decision *DecisionMaker
-	Budget   *BudgetChecker
+	DB        *db.DB
+	Hub       *ws.Hub
+	LLM       LLMClient
+	Embedding EmbeddingClient
+	Tools     *tools.Registry
+	Status    *StatusTracker
+	Cursors   *CursorStore
+	Decision  *DecisionMaker
+	Budget    *BudgetChecker
 
 	mu      sync.Mutex
 	actors  map[int64]actorHandle
@@ -33,16 +34,17 @@ type actorHandle struct {
 }
 
 // NewSupervisor creates a Supervisor with all required dependencies.
-func NewSupervisor(database *db.DB, hub *ws.Hub, llmClient LLMClient, toolsRegistry *tools.Registry) *Supervisor {
+func NewSupervisor(database *db.DB, hub *ws.Hub, llmClient LLMClient, embeddingClient EmbeddingClient, toolsRegistry *tools.Registry) *Supervisor {
 	return &Supervisor{
-		DB:       database,
-		Hub:      hub,
-		LLM:      llmClient,
-		Tools:    toolsRegistry,
-		Status:   NewStatusTracker(),
-		Cursors:  NewCursorStore(database),
-		Decision: NewDecisionMaker(),
-		Budget:   NewBudgetChecker(database),
+		DB:        database,
+		Hub:       hub,
+		LLM:       llmClient,
+		Embedding: embeddingClient,
+		Tools:     toolsRegistry,
+		Status:    NewStatusTracker(),
+		Cursors:   NewCursorStore(database),
+		Decision:  NewDecisionMaker(),
+		Budget:    NewBudgetChecker(database),
 	}
 }
 
@@ -117,15 +119,16 @@ func (s *Supervisor) startActorLocked(p model.Persona) {
 	s.actors[p.ID] = actorHandle{cancel: cancel}
 
 	actor := &Actor{
-		Persona:  p,
-		DB:       s.DB,
-		Hub:      s.Hub,
-		LLM:      s.LLM,
-		Tools:    s.Tools,
-		Status:   s.Status,
-		Cursors:  s.Cursors,
-		Decision: s.Decision,
-		Budget:   s.Budget,
+		Persona:   p,
+		DB:        s.DB,
+		Hub:       s.Hub,
+		LLM:       s.LLM,
+		Embedding: s.Embedding,
+		Tools:     s.Tools,
+		Status:    s.Status,
+		Cursors:   s.Cursors,
+		Decision:  s.Decision,
+		Budget:    s.Budget,
 	}
 
 	s.wg.Add(1)

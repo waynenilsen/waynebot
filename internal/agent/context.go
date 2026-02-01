@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/openai/openai-go"
@@ -24,6 +26,7 @@ type ContextBudget struct {
 	TotalTokens     int
 	SystemTokens    int
 	ProjectTokens   int
+	AgentsmdTokens  int
 	MemoryTokens    int
 	HistoryTokens   int
 	HistoryMessages int
@@ -69,12 +72,16 @@ func (ca *ContextAssembler) AssembleContext(ctx context.Context, input AssembleI
 	systemPrompt := input.Persona.SystemPrompt
 	if len(input.Projects) > 0 {
 		systemPrompt += formatProjectContext(input.Projects)
+		budget.ProjectTokens = EstimateTokens(formatProjectContext(input.Projects))
+
+		// Read AGENTS.md from the first project's root if it exists.
+		agentsmdBlock := readAgentsMd(input.Projects[0].Path)
+		if agentsmdBlock != "" {
+			systemPrompt += agentsmdBlock
+			budget.AgentsmdTokens = EstimateTokens(agentsmdBlock)
+		}
 	}
 	budget.SystemTokens = EstimateTokens(systemPrompt)
-	budget.ProjectTokens = 0
-	if len(input.Projects) > 0 {
-		budget.ProjectTokens = EstimateTokens(formatProjectContext(input.Projects))
-	}
 	remaining -= budget.SystemTokens
 
 	// 2. Retrieve memories via semantic search.
@@ -203,6 +210,26 @@ func formatProjectContext(projects []model.Project) string {
 	}
 	sb.WriteString("\nFile tools (file_read, file_write, shell_exec) are scoped to the project directory.")
 	return sb.String()
+}
+
+// maxAgentsmdChars is the maximum character length for AGENTS.md content (~4000 tokens).
+const maxAgentsmdChars = 16_000
+
+// readAgentsMd reads AGENTS.md from a project root and returns a formatted block.
+// Returns empty string if the file doesn't exist or can't be read.
+func readAgentsMd(projectPath string) string {
+	data, err := os.ReadFile(filepath.Join(projectPath, "AGENTS.md"))
+	if err != nil {
+		return ""
+	}
+	content := string(data)
+	if len(content) > maxAgentsmdChars {
+		content = content[:maxAgentsmdChars]
+	}
+	if strings.TrimSpace(content) == "" {
+		return ""
+	}
+	return "\n\n## Project Instructions (AGENTS.md)\n" + content
 }
 
 // buildSingleMessage converts a single domain message to an OpenAI message param.

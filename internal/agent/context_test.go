@@ -2,6 +2,8 @@ package agent
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -231,6 +233,102 @@ func TestAssembleContextWithProjectContext(t *testing.T) {
 	}
 	if budget.ProjectTokens == 0 {
 		t.Error("expected non-zero project tokens")
+	}
+}
+
+func TestAssembleContextWithAgentsMd(t *testing.T) {
+	d := openTestDB(t)
+
+	persona, err := model.CreatePersona(d, "agentsbot", "Base prompt.", "test-model",
+		nil, 0.7, 100, 0, 0)
+	if err != nil {
+		t.Fatalf("create persona: %v", err)
+	}
+
+	ch, err := model.CreateChannel(d, "agents-test", "", 0)
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+
+	projDir := t.TempDir()
+	err = os.WriteFile(filepath.Join(projDir, "AGENTS.md"), []byte("Always use gofmt.\nPrefer table-driven tests."), 0644)
+	if err != nil {
+		t.Fatalf("write AGENTS.md: %v", err)
+	}
+
+	proj, err := model.CreateProject(d, "agentsproject", projDir, "A project with AGENTS.md")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	_, err = model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello")
+	if err != nil {
+		t.Fatalf("create message: %v", err)
+	}
+
+	history, _ := model.GetRecentMessages(d, ch.ID, 50)
+	reverseMessages(history)
+
+	assembler := &ContextAssembler{DB: d}
+
+	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+		Persona:   persona,
+		ChannelID: ch.ID,
+		Projects:  []model.Project{proj},
+		History:   history,
+	})
+
+	sysContent := msgs[0].OfSystem.Content.OfString.Value
+	if !strings.Contains(sysContent, "## Project Instructions (AGENTS.md)") {
+		t.Error("system message should contain AGENTS.md header")
+	}
+	if !strings.Contains(sysContent, "Always use gofmt.") {
+		t.Error("system message should contain AGENTS.md content")
+	}
+	if budget.AgentsmdTokens == 0 {
+		t.Error("expected non-zero AgentsmdTokens in budget")
+	}
+}
+
+func TestAssembleContextWithoutAgentsMd(t *testing.T) {
+	d := openTestDB(t)
+
+	persona, err := model.CreatePersona(d, "noagentsbot", "Base prompt.", "test-model",
+		nil, 0.7, 100, 0, 0)
+	if err != nil {
+		t.Fatalf("create persona: %v", err)
+	}
+
+	ch, err := model.CreateChannel(d, "no-agents-test", "", 0)
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+
+	// Project dir with no AGENTS.md
+	proj, err := model.CreateProject(d, "plainproject", t.TempDir(), "No agents file")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	_, err = model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello")
+	if err != nil {
+		t.Fatalf("create message: %v", err)
+	}
+
+	history, _ := model.GetRecentMessages(d, ch.ID, 50)
+	reverseMessages(history)
+
+	assembler := &ContextAssembler{DB: d}
+
+	_, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+		Persona:   persona,
+		ChannelID: ch.ID,
+		Projects:  []model.Project{proj},
+		History:   history,
+	})
+
+	if budget.AgentsmdTokens != 0 {
+		t.Errorf("expected 0 AgentsmdTokens without AGENTS.md, got %d", budget.AgentsmdTokens)
 	}
 }
 

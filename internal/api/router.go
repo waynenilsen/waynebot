@@ -44,6 +44,12 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 	ih := &InviteHandler{DB: database}
 	wh := &WsHandler{DB: database, Hub: hub}
 
+	var sup *agent.Supervisor
+	if len(supervisor) > 0 {
+		sup = supervisor[0]
+	}
+	dh := &DMHandler{DB: database, Hub: hub, Supervisor: sup}
+
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/register", ah.Register)
 		r.Post("/auth/login", ah.Login)
@@ -67,6 +73,9 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 
 		r.With(auth.RequireAuth).Post("/invites", ih.CreateInvite)
 		r.With(auth.RequireAuth).Get("/invites", ih.ListInvites)
+
+		r.With(auth.RequireAuth).Get("/dms", dh.ListDMs)
+		r.With(auth.RequireAuth).Post("/dms", dh.CreateDM)
 
 		r.With(auth.RequireAuth).Post("/ws/ticket", wh.CreateTicket)
 

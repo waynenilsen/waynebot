@@ -155,12 +155,28 @@ func FindDMChannel(d *db.DB, p1, p2 DMParticipant) (Channel, error) {
 	))
 }
 
-// ListDMsForUser returns all DM channels where the given user is a participant.
-func ListDMsForUser(d *db.DB, userID int64) ([]Channel, error) {
+// DMChannelInfo combines a DM channel with info about the other participant.
+type DMChannelInfo struct {
+	Channel          Channel
+	OtherUserID      *int64
+	OtherUserName    *string
+	OtherPersonaID   *int64
+	OtherPersonaName *string
+}
+
+// ListDMsForUser returns all DM channels where the given user is a participant,
+// along with the other participant's info.
+func ListDMsForUser(d *db.DB, userID int64) ([]DMChannelInfo, error) {
 	rows, err := d.SQL.Query(
-		`SELECT c.`+channelCols+`
+		`SELECT c.id, c.name, c.description, c.is_dm, c.created_by, c.created_at,
+		        other_dp.user_id, u.username,
+		        other_dp.persona_id, p.name
 		 FROM channels c
 		 JOIN dm_participants dp ON dp.channel_id = c.id
+		 JOIN dm_participants other_dp ON other_dp.channel_id = c.id
+		      AND other_dp.rowid != dp.rowid
+		 LEFT JOIN users u ON u.id = other_dp.user_id
+		 LEFT JOIN personas p ON p.id = other_dp.persona_id
 		 WHERE c.is_dm = 1 AND dp.user_id = ?
 		 ORDER BY c.id`,
 		userID,
@@ -170,13 +186,19 @@ func ListDMsForUser(d *db.DB, userID int64) ([]Channel, error) {
 	}
 	defer rows.Close()
 
-	var channels []Channel
+	var results []DMChannelInfo
 	for rows.Next() {
-		ch, err := scanChannel(rows)
+		var info DMChannelInfo
+		err := rows.Scan(
+			&info.Channel.ID, &info.Channel.Name, &info.Channel.Description,
+			&info.Channel.IsDM, &info.Channel.CreatedBy, &info.Channel.CreatedAt,
+			&info.OtherUserID, &info.OtherUserName,
+			&info.OtherPersonaID, &info.OtherPersonaName,
+		)
 		if err != nil {
 			return nil, err
 		}
-		channels = append(channels, ch)
+		results = append(results, info)
 	}
-	return channels, rows.Err()
+	return results, rows.Err()
 }

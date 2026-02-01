@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAgentActivity } from "../hooks/useAgentActivity";
+import AgentDMPanel from "../components/AgentDMPanel";
 import type { AgentStatus, LLMCall, ToolExecution } from "../types";
 
 type ActivityEntry =
@@ -197,6 +198,9 @@ export default function AgentActivityPage({ agent, onBack }: Props) {
   } = useAgentActivity();
 
   const [tab, setTab] = useState<"all" | "llm" | "tools">("all");
+  const [mobilePanel, setMobilePanel] = useState<"activity" | "chat">(
+    "activity",
+  );
 
   useEffect(() => {
     loadActivity(agent.persona_id);
@@ -333,7 +337,7 @@ export default function AgentActivityPage({ agent, onBack }: Props) {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Activity filter tabs + mobile panel toggle */}
         <div className="flex items-center gap-1 mt-3">
           {(["all", "llm", "tools"] as const).map((t) => (
             <button
@@ -352,42 +356,81 @@ export default function AgentActivityPage({ agent, onBack }: Props) {
                   : "tool executions"}
             </button>
           ))}
+
+          {/* Mobile-only panel toggle */}
+          <div className="ml-auto flex items-center gap-1 lg:hidden">
+            {(["activity", "chat"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setMobilePanel(p)}
+                className={`text-xs font-mono px-3 py-1.5 rounded transition-colors cursor-pointer ${
+                  mobilePanel === p
+                    ? "text-[#e2b714] bg-[#e2b714]/10 border border-[#e2b714]/20"
+                    : "text-[#a0a0b8]/50 hover:text-[#a0a0b8] border border-transparent"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Activity feed */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {loading && activity.length === 0 ? (
-          <div className="text-[#a0a0b8]/50 text-sm font-mono text-center py-12">
-            loading...
-          </div>
-        ) : activity.length === 0 ? (
-          <div className="text-[#a0a0b8]/50 text-sm font-mono text-center py-12">
-            no activity recorded yet
-          </div>
-        ) : (
-          <div className="max-w-4xl mx-auto space-y-2">
-            {activity.map((entry) =>
-              entry.kind === "llm" ? (
-                <LLMCallEntry key={`llm-${entry.data.id}`} call={entry.data} />
-              ) : (
-                <ToolExecEntry
-                  key={`tool-${entry.data.id}`}
-                  exec={entry.data}
-                />
-              ),
-            )}
+      {/* Split content area */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Activity feed — hidden on mobile when chat is selected */}
+        <div
+          className={`flex-1 overflow-y-auto p-6 lg:block ${
+            mobilePanel === "activity" ? "block" : "hidden"
+          }`}
+        >
+          {loading && activity.length === 0 ? (
+            <div className="text-[#a0a0b8]/50 text-sm font-mono text-center py-12">
+              loading...
+            </div>
+          ) : activity.length === 0 ? (
+            <div className="text-[#a0a0b8]/50 text-sm font-mono text-center py-12">
+              no activity recorded yet
+            </div>
+          ) : (
+            <div className="max-w-4xl mx-auto space-y-2">
+              {activity.map((entry) =>
+                entry.kind === "llm" ? (
+                  <LLMCallEntry
+                    key={`llm-${entry.data.id}`}
+                    call={entry.data}
+                  />
+                ) : (
+                  <ToolExecEntry
+                    key={`tool-${entry.data.id}`}
+                    exec={entry.data}
+                  />
+                ),
+              )}
 
-            {canLoadMore && (
-              <button
-                onClick={handleLoadMore}
-                className="w-full text-center text-[#a0a0b8]/50 hover:text-[#a0a0b8] text-sm font-mono py-3 border border-[#e2b714]/10 rounded-lg hover:border-[#e2b714]/25 transition-colors cursor-pointer"
-              >
-                load more
-              </button>
-            )}
-          </div>
-        )}
+              {canLoadMore && (
+                <button
+                  onClick={handleLoadMore}
+                  className="w-full text-center text-[#a0a0b8]/50 hover:text-[#a0a0b8] text-sm font-mono py-3 border border-[#e2b714]/10 rounded-lg hover:border-[#e2b714]/25 transition-colors cursor-pointer"
+                >
+                  load more
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* DM panel — right column on desktop, toggled on mobile */}
+        <div
+          className={`w-full lg:w-[38%] lg:max-w-md lg:border-l border-[#e2b714]/10 flex flex-col min-h-0 lg:flex ${
+            mobilePanel === "chat" ? "flex" : "hidden"
+          }`}
+        >
+          <AgentDMPanel
+            personaId={agent.persona_id}
+            personaName={agent.persona_name}
+          />
+        </div>
       </div>
     </div>
   );

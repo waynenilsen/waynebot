@@ -49,6 +49,7 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		sup = supervisor[0]
 	}
 	dh := &DMHandler{DB: database, Hub: hub, Supervisor: sup}
+	mh := &MemberHandler{DB: database}
 
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/register", ah.Register)
@@ -61,6 +62,10 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		r.With(auth.RequireAuth).Get("/channels/{id}/messages", ch.GetMessages)
 		r.With(auth.RequireAuth).Post("/channels/{id}/messages", ch.PostMessage)
 		r.With(auth.RequireAuth).Post("/channels/{id}/read", ch.MarkRead)
+
+		r.With(auth.RequireAuth).Get("/channels/{id}/members", mh.ListMembers)
+		r.With(auth.RequireAuth).Post("/channels/{id}/members", mh.AddMember)
+		r.With(auth.RequireAuth).Delete("/channels/{id}/members", mh.RemoveMember)
 
 		rh := &ReactionHandler{DB: database, Hub: hub}
 		r.With(auth.RequireAuth).Put("/channels/{id}/messages/{messageID}/reactions", rh.AddReaction)

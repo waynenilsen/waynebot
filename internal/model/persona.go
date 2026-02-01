@@ -149,6 +149,38 @@ func GetSubscribedChannels(d *db.DB, personaID int64) ([]Channel, error) {
 	return channels, rows.Err()
 }
 
+// PersonaChannelMember represents a persona's membership in a channel.
+type PersonaChannelMember struct {
+	PersonaID int64
+	Name      string
+}
+
+// GetChannelPersonas returns all personas subscribed to a channel.
+func GetChannelPersonas(d *db.DB, channelID int64) ([]PersonaChannelMember, error) {
+	rows, err := d.SQL.Query(
+		`SELECT p.id, p.name
+		 FROM personas p
+		 INNER JOIN persona_channels pc ON pc.persona_id = p.id
+		 WHERE pc.channel_id = ?
+		 ORDER BY p.id`,
+		channelID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []PersonaChannelMember
+	for rows.Next() {
+		var m PersonaChannelMember
+		if err := rows.Scan(&m.PersonaID, &m.Name); err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+	return members, rows.Err()
+}
+
 // scanPersona scans a single persona row, handling JSON deserialization of tools_enabled.
 func scanPersona(row *sql.Row, p *Persona) error {
 	var toolsJSON string

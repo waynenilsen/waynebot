@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import type { Message } from "../types";
 import MessageItem from "./MessageItem";
+import TypingIndicator from "./TypingIndicator";
 
 interface MessageThreadProps {
   messages: Message[];
@@ -16,6 +17,7 @@ interface MessageThreadProps {
   ) => void;
   onToggleMembers?: () => void;
   onToggleProjects?: () => void;
+  typingAgents?: { persona_id: number; persona_name: string }[];
 }
 
 export default function MessageThread({
@@ -28,6 +30,7 @@ export default function MessageThread({
   onReactionToggle,
   onToggleMembers,
   onToggleProjects,
+  typingAgents = [],
 }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -144,6 +147,9 @@ export default function MessageThread({
             onReactionToggle={onReactionToggle}
           />
         ))}
+
+        {/* Typing indicator */}
+        <TypingIndicator agents={typingAgents} />
       </div>
     </div>
   );

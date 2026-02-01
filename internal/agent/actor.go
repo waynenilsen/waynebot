@@ -112,6 +112,7 @@ func (a *Actor) processChannel(ctx context.Context, ch model.Channel) {
 	}
 	if !ok {
 		a.Status.Set(a.Persona.ID, StatusBudgetExceeded)
+		a.broadcastStatus(ch.ID, StatusBudgetExceeded)
 		return
 	}
 
@@ -121,10 +122,12 @@ func (a *Actor) processChannel(ctx context.Context, ch model.Channel) {
 // respond builds history, calls the LLM (with tool call loop), and posts the final response.
 func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 	a.Status.Set(a.Persona.ID, StatusThinking)
+	a.broadcastStatus(ch.ID, StatusThinking)
 	defer func() {
 		// Don't override terminal states like context_full or error.
 		if s := a.Status.Get(a.Persona.ID); s == StatusThinking || s == StatusToolCall {
 			a.Status.Set(a.Persona.ID, StatusIdle)
+			a.broadcastStatus(ch.ID, StatusIdle)
 		}
 	}()
 
@@ -158,6 +161,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 			"channel_id", ch.ID,
 		)
 		a.Status.Set(a.Persona.ID, StatusContextFull)
+		a.broadcastStatus(ch.ID, StatusContextFull)
 		a.postMessage(ch, "My context window is full. I cannot process new messages until context is reset. Please use `/reset-context` or start a new conversation thread.")
 		a.broadcastContextBudget(ch.ID, budget)
 		return
@@ -182,6 +186,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 		if err != nil {
 			slog.Error("actor: llm call", "persona", a.Persona.Name, "error", err)
 			a.Status.Set(a.Persona.ID, StatusError)
+			a.broadcastStatus(ch.ID, StatusError)
 			return
 		}
 
@@ -198,6 +203,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 
 		// Process tool calls.
 		a.Status.Set(a.Persona.ID, StatusToolCall)
+		a.broadcastStatus(ch.ID, StatusToolCall)
 		messages = a.executeToolCalls(messages, resp, projects)
 	}
 
@@ -335,6 +341,19 @@ func (a *Actor) recordToolExecution(toolName, argsJSON, output, errText string, 
 			"error_text":  errText,
 			"duration_ms": duration.Milliseconds(),
 			"created_at":  time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+}
+
+// broadcastStatus sends an agent_status event via the WebSocket hub.
+func (a *Actor) broadcastStatus(channelID int64, status Status) {
+	a.Hub.Broadcast(ws.Event{
+		Type: "agent_status",
+		Data: map[string]any{
+			"persona_id":   a.Persona.ID,
+			"persona_name": a.Persona.Name,
+			"channel_id":   channelID,
+			"status":       status.String(),
 		},
 	})
 }

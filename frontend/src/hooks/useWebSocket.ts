@@ -5,8 +5,13 @@ import type { Message, ReactionEvent, WsEvent } from "../types";
 import { useApp } from "../store/AppContext";
 
 export function useWebSocket(authenticated: boolean) {
-  const { state, addMessage, incrementUnread, incrementDMUnread, updateReactions } =
-    useApp();
+  const {
+    state,
+    addMessage,
+    incrementUnread,
+    incrementDMUnread,
+    updateReactions,
+  } = useApp();
   const [connected, setConnected] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
   const connRef = useRef<ReturnType<typeof connectWs> | null>(null);
@@ -56,7 +61,8 @@ export function useWebSocket(authenticated: boolean) {
         } else if (
           event.type === "agent_llm_call" ||
           event.type === "agent_tool_execution" ||
-          event.type === "agent_context_budget"
+          event.type === "agent_context_budget" ||
+          event.type === "agent_status"
         ) {
           window.dispatchEvent(
             new CustomEvent(event.type, { detail: event.data }),
@@ -79,7 +85,13 @@ export function useWebSocket(authenticated: boolean) {
     return () => {
       conn.close();
     };
-  }, [authenticated, addMessage, incrementUnread, incrementDMUnread, updateReactions]);
+  }, [
+    authenticated,
+    addMessage,
+    incrementUnread,
+    incrementDMUnread,
+    updateReactions,
+  ]);
 
   return { connected, wasConnected };
 }

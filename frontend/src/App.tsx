@@ -5,6 +5,7 @@ import { useDMs } from "./hooks/useDMs";
 import { useMessages } from "./hooks/useMessages";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useMentionTargets } from "./hooks/useMentionTargets";
+import { useTypingIndicator } from "./hooks/useTypingIndicator";
 import LoginPage from "./pages/LoginPage";
 import PersonaPage from "./pages/PersonaPage";
 import AgentDashboard from "./pages/AgentDashboard";
@@ -41,6 +42,7 @@ function AuthenticatedApp({
     useMessages(currentChannelId);
   const { connected, wasConnected } = useWebSocket(true);
   const { targets: mentionTargets } = useMentionTargets();
+  const typingAgents = useTypingIndicator(currentChannelId);
   const [currentView, setCurrentView] = useState("channels");
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -179,6 +181,7 @@ function AuthenticatedApp({
                 channelName={dmDisplayName(currentDM)}
                 isDM
                 onReactionToggle={toggleReaction}
+                typingAgents={typingAgents}
               />
               <MessageCompose
                 onSend={sendMessage}
@@ -198,6 +201,7 @@ function AuthenticatedApp({
                   onReactionToggle={toggleReaction}
                   onToggleMembers={() => setShowMembers((p) => !p)}
                   onToggleProjects={() => setShowProjects((p) => !p)}
+                  typingAgents={typingAgents}
                 />
                 {currentChannelId && (
                   <ChannelContextBudgets channelId={currentChannelId} />

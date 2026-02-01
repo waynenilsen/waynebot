@@ -157,6 +157,13 @@ export interface ProjectDocument {
   content: string;
 }
 
+export interface AgentStatusEvent {
+  persona_id: number;
+  persona_name: string;
+  channel_id: number;
+  status: string;
+}
+
 export interface ContextBudget {
   persona_id: number;
   channel_id: number;

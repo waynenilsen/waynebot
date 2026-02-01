@@ -68,6 +68,11 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		r.With(auth.RequireAuth).Post("/channels/{id}/members", mh.AddMember)
 		r.With(auth.RequireAuth).Delete("/channels/{id}/members", mh.RemoveMember)
 
+		cph := &ChannelProjectHandler{DB: database}
+		r.With(auth.RequireAuth).Get("/channels/{id}/projects", cph.ListChannelProjects)
+		r.With(auth.RequireAuth).Post("/channels/{id}/projects", cph.AddChannelProject)
+		r.With(auth.RequireAuth).Delete("/channels/{id}/projects/{projectID}", cph.RemoveChannelProject)
+
 		rh := &ReactionHandler{DB: database, Hub: hub}
 		r.With(auth.RequireAuth).Put("/channels/{id}/messages/{messageID}/reactions", rh.AddReaction)
 		r.With(auth.RequireAuth).Delete("/channels/{id}/messages/{messageID}/reactions", rh.RemoveReaction)

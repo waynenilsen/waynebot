@@ -218,6 +218,16 @@ CREATE TABLE projects (
 );
 `,
 	},
+	{
+		Version: 9,
+		SQL: `
+CREATE TABLE channel_projects (
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    PRIMARY KEY (channel_id, project_id)
+);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

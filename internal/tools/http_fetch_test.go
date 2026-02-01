@@ -15,9 +15,7 @@ func TestHTTPFetchSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	// Empty blocked hosts so the test server (127.0.0.1) is reachable.
-	cfg := &SandboxConfig{}
-	fn := HTTPFetch(cfg)
+	fn := HTTPFetch()
 
 	args, _ := json.Marshal(httpFetchArgs{URL: srv.URL})
 	out, err := fn(context.Background(), args)
@@ -29,30 +27,8 @@ func TestHTTPFetchSuccess(t *testing.T) {
 	}
 }
 
-func TestHTTPFetchBlockedHost(t *testing.T) {
-	cfg := &SandboxConfig{BlockedHosts: DefaultBlockedHosts()}
-	fn := HTTPFetch(cfg)
-
-	cases := []string{
-		"http://localhost/foo",
-		"http://127.0.0.1/bar",
-		"http://169.254.169.254/latest/meta-data",
-	}
-	for _, u := range cases {
-		args, _ := json.Marshal(httpFetchArgs{URL: u})
-		_, err := fn(context.Background(), args)
-		if err == nil {
-			t.Fatalf("expected error for blocked host: %s", u)
-		}
-		if !strings.Contains(err.Error(), "blocked") {
-			t.Fatalf("unexpected error for %s: %v", u, err)
-		}
-	}
-}
-
 func TestHTTPFetchEmptyURL(t *testing.T) {
-	cfg := &SandboxConfig{BlockedHosts: DefaultBlockedHosts()}
-	fn := HTTPFetch(cfg)
+	fn := HTTPFetch()
 
 	args, _ := json.Marshal(httpFetchArgs{})
 	_, err := fn(context.Background(), args)
@@ -68,8 +44,7 @@ func TestHTTPFetchResponseCap(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	cfg := &SandboxConfig{}
-	fn := HTTPFetch(cfg)
+	fn := HTTPFetch()
 
 	args, _ := json.Marshal(httpFetchArgs{URL: srv.URL})
 	out, err := fn(context.Background(), args)
@@ -88,8 +63,7 @@ func TestHTTPFetchHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	cfg := &SandboxConfig{}
-	fn := HTTPFetch(cfg)
+	fn := HTTPFetch()
 
 	args, _ := json.Marshal(httpFetchArgs{URL: srv.URL})
 	out, err := fn(context.Background(), args)

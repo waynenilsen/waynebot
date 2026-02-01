@@ -7,18 +7,8 @@ import (
 	"testing"
 )
 
-func sandboxForShell(t *testing.T) *SandboxConfig {
-	t.Helper()
-	return &SandboxConfig{
-		AllowedCommands: []string{"echo", "ls", "cat"},
-		BaseDir:         t.TempDir(),
-		BlockedHosts:    DefaultBlockedHosts(),
-	}
-}
-
 func TestShellExecEcho(t *testing.T) {
-	cfg := sandboxForShell(t)
-	fn := ShellExec(cfg)
+	fn := ShellExec(t.TempDir())
 
 	args, _ := json.Marshal(shellExecArgs{Command: "echo", Args: []string{"hello"}})
 	out, err := fn(context.Background(), args)
@@ -30,23 +20,8 @@ func TestShellExecEcho(t *testing.T) {
 	}
 }
 
-func TestShellExecDisallowedCommand(t *testing.T) {
-	cfg := sandboxForShell(t)
-	fn := ShellExec(cfg)
-
-	args, _ := json.Marshal(shellExecArgs{Command: "rm", Args: []string{"-rf", "/"}})
-	_, err := fn(context.Background(), args)
-	if err == nil {
-		t.Fatal("expected error for disallowed command")
-	}
-	if !strings.Contains(err.Error(), "not allowed") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestShellExecEmptyCommand(t *testing.T) {
-	cfg := sandboxForShell(t)
-	fn := ShellExec(cfg)
+	fn := ShellExec(t.TempDir())
 
 	args, _ := json.Marshal(shellExecArgs{})
 	_, err := fn(context.Background(), args)
@@ -56,9 +31,7 @@ func TestShellExecEmptyCommand(t *testing.T) {
 }
 
 func TestShellExecOutputCap(t *testing.T) {
-	cfg := sandboxForShell(t)
-	cfg.AllowedCommands = append(cfg.AllowedCommands, "dd")
-	fn := ShellExec(cfg)
+	fn := ShellExec(t.TempDir())
 
 	// Generate output larger than 10KB.
 	args, _ := json.Marshal(shellExecArgs{
@@ -71,9 +44,8 @@ func TestShellExecOutputCap(t *testing.T) {
 	}
 }
 
-func TestShellExecPathStripping(t *testing.T) {
-	cfg := sandboxForShell(t)
-	fn := ShellExec(cfg)
+func TestShellExecFullPath(t *testing.T) {
+	fn := ShellExec(t.TempDir())
 
 	args, _ := json.Marshal(shellExecArgs{Command: "/bin/echo", Args: []string{"hi"}})
 	out, err := fn(context.Background(), args)

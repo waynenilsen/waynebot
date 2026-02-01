@@ -15,9 +15,9 @@ type fileReadArgs struct {
 	Path string `json:"path"`
 }
 
-// FileRead returns a ToolFunc that reads files restricted to the sandbox base
-// directory. Path traversal is rejected and files larger than 1MB are refused.
-func FileRead(cfg *SandboxConfig) ToolFunc {
+// FileRead returns a ToolFunc that reads files within the project directory.
+// Path traversal is rejected and files larger than 1MB are refused.
+func FileRead(baseDir string) ToolFunc {
 	return func(ctx context.Context, raw json.RawMessage) (string, error) {
 		var args fileReadArgs
 		if err := json.Unmarshal(raw, &args); err != nil {
@@ -27,12 +27,12 @@ func FileRead(cfg *SandboxConfig) ToolFunc {
 			return "", fmt.Errorf("path is required")
 		}
 
-		baseDir := cfg.BaseDir
-		if dir := ProjectDirFromContext(ctx); dir != "" {
-			baseDir = dir
+		dir := baseDir
+		if d := ProjectDirFromContext(ctx); d != "" {
+			dir = d
 		}
 
-		resolved, err := securePath(baseDir, args.Path)
+		resolved, err := securePath(dir, args.Path)
 		if err != nil {
 			return "", err
 		}
@@ -58,7 +58,6 @@ func FileRead(cfg *SandboxConfig) ToolFunc {
 
 // securePath resolves path under baseDir and ensures it doesn't escape.
 func securePath(baseDir, path string) (string, error) {
-	// Clean the joined path to collapse any ".." segments.
 	cleaned := filepath.Clean(filepath.Join(baseDir, path))
 	base := filepath.Clean(baseDir)
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 )
 
@@ -21,9 +20,8 @@ type httpFetchArgs struct {
 	Header map[string]string `json:"header"`
 }
 
-// HTTPFetch returns a ToolFunc that fetches HTTP URLs with host restrictions and
-// response size limits.
-func HTTPFetch(cfg *SandboxConfig) ToolFunc {
+// HTTPFetch returns a ToolFunc that fetches HTTP URLs with response size limits.
+func HTTPFetch() ToolFunc {
 	client := &http.Client{Timeout: httpFetchTimeout}
 
 	return func(ctx context.Context, raw json.RawMessage) (string, error) {
@@ -36,16 +34,6 @@ func HTTPFetch(cfg *SandboxConfig) ToolFunc {
 		}
 		if args.Method == "" {
 			args.Method = http.MethodGet
-		}
-
-		parsed, err := url.Parse(args.URL)
-		if err != nil {
-			return "", fmt.Errorf("invalid url: %w", err)
-		}
-
-		host := parsed.Hostname()
-		if cfg.IsHostBlocked(host) {
-			return "", fmt.Errorf("host %q is blocked", host)
 		}
 
 		req, err := http.NewRequestWithContext(ctx, args.Method, args.URL, nil)

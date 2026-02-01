@@ -10,8 +10,8 @@ import (
 )
 
 func TestFileWriteSuccess(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileWrite(cfg)
+	dir := t.TempDir()
+	fn := FileWrite(dir)
 
 	args, _ := json.Marshal(fileWriteArgs{Path: "out.txt", Content: "hello"})
 	out, err := fn(context.Background(), args)
@@ -22,15 +22,15 @@ func TestFileWriteSuccess(t *testing.T) {
 		t.Fatalf("unexpected result: %s", out)
 	}
 
-	data, _ := os.ReadFile(filepath.Join(cfg.BaseDir, "out.txt"))
+	data, _ := os.ReadFile(filepath.Join(dir, "out.txt"))
 	if string(data) != "hello" {
 		t.Fatalf("file content = %q, want %q", data, "hello")
 	}
 }
 
 func TestFileWriteCreatesSubdirs(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileWrite(cfg)
+	dir := t.TempDir()
+	fn := FileWrite(dir)
 
 	args, _ := json.Marshal(fileWriteArgs{Path: "a/b/c.txt", Content: "nested"})
 	_, err := fn(context.Background(), args)
@@ -38,15 +38,14 @@ func TestFileWriteCreatesSubdirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, _ := os.ReadFile(filepath.Join(cfg.BaseDir, "a", "b", "c.txt"))
+	data, _ := os.ReadFile(filepath.Join(dir, "a", "b", "c.txt"))
 	if string(data) != "nested" {
 		t.Fatalf("file content = %q", data)
 	}
 }
 
 func TestFileWritePathTraversal(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileWrite(cfg)
+	fn := FileWrite(t.TempDir())
 
 	args, _ := json.Marshal(fileWriteArgs{Path: "../../evil.txt", Content: "bad"})
 	_, err := fn(context.Background(), args)
@@ -56,8 +55,7 @@ func TestFileWritePathTraversal(t *testing.T) {
 }
 
 func TestFileWriteTooLarge(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileWrite(cfg)
+	fn := FileWrite(t.TempDir())
 
 	big := strings.Repeat("x", maxFileWriteSize+1)
 	args, _ := json.Marshal(fileWriteArgs{Path: "big.txt", Content: big})
@@ -68,8 +66,7 @@ func TestFileWriteTooLarge(t *testing.T) {
 }
 
 func TestFileWriteEmptyPath(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileWrite(cfg)
+	fn := FileWrite(t.TempDir())
 
 	args, _ := json.Marshal(fileWriteArgs{Content: "hello"})
 	_, err := fn(context.Background(), args)

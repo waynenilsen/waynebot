@@ -8,9 +8,8 @@ import (
 
 // Config holds all application configuration, loaded from environment variables.
 type Config struct {
-	Port       int
-	DBPath     string
-	SandboxDir string
+	Port   int
+	DBPath string
 
 	CORSOrigins []string
 
@@ -28,9 +27,8 @@ type Config struct {
 // Load reads configuration from environment variables with sensible defaults.
 func Load() Config {
 	c := Config{
-		Port:       envInt("WAYNEBOT_PORT", 59731),
-		DBPath:     envStr("WAYNEBOT_DB_PATH", "waynebot.db"),
-		SandboxDir: envStr("WAYNEBOT_SANDBOX_DIR", "/tmp/waynebot-sandbox"),
+		Port:   envInt("WAYNEBOT_PORT", 59731),
+		DBPath: envStr("WAYNEBOT_DB_PATH", "waynebot.db"),
 
 		CORSOrigins: envList("WAYNEBOT_CORS_ORIGINS", []string{"http://localhost:5173"}),
 

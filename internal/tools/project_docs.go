@@ -24,27 +24,27 @@ type projectDocsArgs struct {
 
 // ProjectDocs returns a ToolFunc that reads, writes, appends, or lists project
 // documents in the .waynebot/ directory of the current project.
-func ProjectDocs(cfg *SandboxConfig) ToolFunc {
+func ProjectDocs(baseDir string) ToolFunc {
 	return func(ctx context.Context, raw json.RawMessage) (string, error) {
 		var args projectDocsArgs
 		if err := json.Unmarshal(raw, &args); err != nil {
 			return "", fmt.Errorf("invalid args: %w", err)
 		}
 
-		baseDir := cfg.BaseDir
-		if dir := ProjectDirFromContext(ctx); dir != "" {
-			baseDir = dir
+		dir := baseDir
+		if d := ProjectDirFromContext(ctx); d != "" {
+			dir = d
 		}
 
 		switch args.Action {
 		case "list":
-			return projectDocsList(baseDir)
+			return projectDocsList(dir)
 		case "read":
-			return projectDocsRead(baseDir, args.DocType)
+			return projectDocsRead(dir, args.DocType)
 		case "write":
-			return projectDocsWrite(baseDir, args.DocType, args.Content)
+			return projectDocsWrite(dir, args.DocType, args.Content)
 		case "append":
-			return projectDocsAppend(baseDir, args.DocType, args.Content)
+			return projectDocsAppend(dir, args.DocType, args.Content)
 		default:
 			return "", fmt.Errorf("unknown action %q: must be list, read, write, or append", args.Action)
 		}

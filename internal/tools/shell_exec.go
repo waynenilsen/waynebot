@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -20,9 +19,9 @@ type shellExecArgs struct {
 	Args    []string `json:"args"`
 }
 
-// ShellExec returns a ToolFunc that executes shell commands within sandbox
-// constraints. Only commands in the allowlist may be run.
-func ShellExec(cfg *SandboxConfig) ToolFunc {
+// ShellExec returns a ToolFunc that executes shell commands within the project
+// directory. Any command may be run; only timeout and output cap are enforced.
+func ShellExec(baseDir string) ToolFunc {
 	return func(ctx context.Context, raw json.RawMessage) (string, error) {
 		var args shellExecArgs
 		if err := json.Unmarshal(raw, &args); err != nil {
@@ -32,20 +31,11 @@ func ShellExec(cfg *SandboxConfig) ToolFunc {
 			return "", fmt.Errorf("command is required")
 		}
 
-		// Extract the base command name (strip any path).
-		base := args.Command
-		if i := strings.LastIndex(base, "/"); i >= 0 {
-			base = base[i+1:]
-		}
-		if !cfg.IsCommandAllowed(base) {
-			return "", fmt.Errorf("command %q is not allowed", base)
-		}
-
 		ctx, cancel := context.WithTimeout(ctx, shellTimeout)
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, args.Command, args.Args...)
-		cmd.Dir = cfg.BaseDir
+		cmd.Dir = baseDir
 		if dir := ProjectDirFromContext(ctx); dir != "" {
 			cmd.Dir = dir
 		}

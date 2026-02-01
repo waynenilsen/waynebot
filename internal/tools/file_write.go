@@ -15,9 +15,9 @@ type fileWriteArgs struct {
 	Content string `json:"content"`
 }
 
-// FileWrite returns a ToolFunc that writes files restricted to the sandbox base
-// directory. Path traversal is rejected and content larger than 1MB is refused.
-func FileWrite(cfg *SandboxConfig) ToolFunc {
+// FileWrite returns a ToolFunc that writes files within the project directory.
+// Path traversal is rejected and content larger than 1MB is refused.
+func FileWrite(baseDir string) ToolFunc {
 	return func(ctx context.Context, raw json.RawMessage) (string, error) {
 		var args fileWriteArgs
 		if err := json.Unmarshal(raw, &args); err != nil {
@@ -30,18 +30,18 @@ func FileWrite(cfg *SandboxConfig) ToolFunc {
 			return "", fmt.Errorf("content too large: %d bytes (max %d)", len(args.Content), maxFileWriteSize)
 		}
 
-		baseDir := cfg.BaseDir
-		if dir := ProjectDirFromContext(ctx); dir != "" {
-			baseDir = dir
+		dir := baseDir
+		if d := ProjectDirFromContext(ctx); d != "" {
+			dir = d
 		}
 
-		resolved, err := securePath(baseDir, args.Path)
+		resolved, err := securePath(dir, args.Path)
 		if err != nil {
 			return "", err
 		}
 
-		dir := filepath.Dir(resolved)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		parent := filepath.Dir(resolved)
+		if err := os.MkdirAll(parent, 0o755); err != nil {
 			return "", fmt.Errorf("mkdir: %w", err)
 		}
 

@@ -9,19 +9,11 @@ import (
 	"testing"
 )
 
-func sandboxForFile(t *testing.T) *SandboxConfig {
-	t.Helper()
-	return &SandboxConfig{
-		BaseDir:      t.TempDir(),
-		BlockedHosts: DefaultBlockedHosts(),
-	}
-}
-
 func TestFileReadSuccess(t *testing.T) {
-	cfg := sandboxForFile(t)
-	os.WriteFile(filepath.Join(cfg.BaseDir, "hello.txt"), []byte("world"), 0o644)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "hello.txt"), []byte("world"), 0o644)
 
-	fn := FileRead(cfg)
+	fn := FileRead(dir)
 	args, _ := json.Marshal(fileReadArgs{Path: "hello.txt"})
 
 	out, err := fn(context.Background(), args)
@@ -34,8 +26,7 @@ func TestFileReadSuccess(t *testing.T) {
 }
 
 func TestFileReadPathTraversal(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileRead(cfg)
+	fn := FileRead(t.TempDir())
 
 	args, _ := json.Marshal(fileReadArgs{Path: "../../etc/passwd"})
 	_, err := fn(context.Background(), args)
@@ -48,8 +39,7 @@ func TestFileReadPathTraversal(t *testing.T) {
 }
 
 func TestFileReadEmptyPath(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := FileRead(cfg)
+	fn := FileRead(t.TempDir())
 
 	args, _ := json.Marshal(fileReadArgs{})
 	_, err := fn(context.Background(), args)
@@ -59,9 +49,9 @@ func TestFileReadEmptyPath(t *testing.T) {
 }
 
 func TestFileReadDirectory(t *testing.T) {
-	cfg := sandboxForFile(t)
-	os.MkdirAll(filepath.Join(cfg.BaseDir, "subdir"), 0o755)
-	fn := FileRead(cfg)
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "subdir"), 0o755)
+	fn := FileRead(dir)
 
 	args, _ := json.Marshal(fileReadArgs{Path: "subdir"})
 	_, err := fn(context.Background(), args)
@@ -71,11 +61,10 @@ func TestFileReadDirectory(t *testing.T) {
 }
 
 func TestFileReadTooLarge(t *testing.T) {
-	cfg := sandboxForFile(t)
-	// Create a file just over 1MB.
+	dir := t.TempDir()
 	big := make([]byte, maxFileReadSize+1)
-	os.WriteFile(filepath.Join(cfg.BaseDir, "big.bin"), big, 0o644)
-	fn := FileRead(cfg)
+	os.WriteFile(filepath.Join(dir, "big.bin"), big, 0o644)
+	fn := FileRead(dir)
 
 	args, _ := json.Marshal(fileReadArgs{Path: "big.bin"})
 	_, err := fn(context.Background(), args)

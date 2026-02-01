@@ -46,14 +46,7 @@ func main() {
 
 	llmClient := llm.NewClient(cfg.OpenRouterKey)
 	toolsRegistry := tools.NewRegistry()
-	toolsRegistry.RegisterDefaults(&tools.SandboxConfig{
-		BaseDir:      cfg.SandboxDir,
-		BlockedHosts: tools.DefaultBlockedHosts(),
-		AllowedCommands: []string{
-			"ls", "cat", "head", "tail", "grep", "find", "wc",
-			"sort", "uniq", "diff", "echo", "date", "pwd",
-		},
-	})
+	toolsRegistry.RegisterDefaults(".")
 	toolsRegistry.Register("message_react", tools.MessageReact(database, hub))
 	embeddingClient := embedding.NewClient(cfg.OpenRouterKey)
 	toolsRegistry.Register("memory_search", tools.MemorySearch(database, embeddingClient))

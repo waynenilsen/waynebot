@@ -11,7 +11,7 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 	"shell_exec": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "shell_exec",
-			Description: param.NewOpt("Execute a shell command with arguments inside the sandbox."),
+			Description: param.NewOpt("Execute a shell command with arguments in the project directory."),
 			Parameters: shared.FunctionParameters{
 				"type": "object",
 				"properties": map[string]any{
@@ -32,7 +32,7 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 	"file_read": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "file_read",
-			Description: param.NewOpt("Read the contents of a file inside the sandbox."),
+			Description: param.NewOpt("Read the contents of a file in the project directory."),
 			Parameters: shared.FunctionParameters{
 				"type": "object",
 				"properties": map[string]any{
@@ -48,7 +48,7 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 	"file_write": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "file_write",
-			Description: param.NewOpt("Write content to a file inside the sandbox."),
+			Description: param.NewOpt("Write content to a file in the project directory."),
 			Parameters: shared.FunctionParameters{
 				"type": "object",
 				"properties": map[string]any{

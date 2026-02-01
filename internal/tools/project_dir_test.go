@@ -10,11 +10,11 @@ import (
 )
 
 func TestFileReadUsesProjectDir(t *testing.T) {
-	cfg := sandboxForFile(t)
+	baseDir := t.TempDir()
 	projectDir := t.TempDir()
 	os.WriteFile(filepath.Join(projectDir, "proj.txt"), []byte("project content"), 0o644)
 
-	fn := FileRead(cfg)
+	fn := FileRead(baseDir)
 	ctx := WithProjectDir(context.Background(), projectDir)
 	args, _ := json.Marshal(fileReadArgs{Path: "proj.txt"})
 
@@ -27,27 +27,27 @@ func TestFileReadUsesProjectDir(t *testing.T) {
 	}
 }
 
-func TestFileReadFallsBackToSandbox(t *testing.T) {
-	cfg := sandboxForFile(t)
-	os.WriteFile(filepath.Join(cfg.BaseDir, "sandbox.txt"), []byte("sandbox content"), 0o644)
+func TestFileReadFallsBackToBaseDir(t *testing.T) {
+	baseDir := t.TempDir()
+	os.WriteFile(filepath.Join(baseDir, "base.txt"), []byte("base content"), 0o644)
 
-	fn := FileRead(cfg)
-	args, _ := json.Marshal(fileReadArgs{Path: "sandbox.txt"})
+	fn := FileRead(baseDir)
+	args, _ := json.Marshal(fileReadArgs{Path: "base.txt"})
 
 	out, err := fn(context.Background(), args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != "sandbox content" {
-		t.Fatalf("got %q, want %q", out, "sandbox content")
+	if out != "base content" {
+		t.Fatalf("got %q, want %q", out, "base content")
 	}
 }
 
 func TestFileWriteUsesProjectDir(t *testing.T) {
-	cfg := sandboxForFile(t)
+	baseDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	fn := FileWrite(cfg)
+	fn := FileWrite(baseDir)
 	ctx := WithProjectDir(context.Background(), projectDir)
 	args, _ := json.Marshal(fileWriteArgs{Path: "out.txt", Content: "hello project"})
 
@@ -65,32 +65,31 @@ func TestFileWriteUsesProjectDir(t *testing.T) {
 	}
 }
 
-func TestFileWriteFallsBackToSandbox(t *testing.T) {
-	cfg := sandboxForFile(t)
+func TestFileWriteFallsBackToBaseDir(t *testing.T) {
+	baseDir := t.TempDir()
 
-	fn := FileWrite(cfg)
-	args, _ := json.Marshal(fileWriteArgs{Path: "out.txt", Content: "hello sandbox"})
+	fn := FileWrite(baseDir)
+	args, _ := json.Marshal(fileWriteArgs{Path: "out.txt", Content: "hello base"})
 
 	_, err := fn(context.Background(), args)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(cfg.BaseDir, "out.txt"))
+	data, err := os.ReadFile(filepath.Join(baseDir, "out.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data) != "hello sandbox" {
-		t.Fatalf("got %q, want %q", string(data), "hello sandbox")
+	if string(data) != "hello base" {
+		t.Fatalf("got %q, want %q", string(data), "hello base")
 	}
 }
 
 func TestShellExecUsesProjectDir(t *testing.T) {
-	cfg := sandboxForShell(t)
-	cfg.AllowedCommands = append(cfg.AllowedCommands, "pwd")
+	baseDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	fn := ShellExec(cfg)
+	fn := ShellExec(baseDir)
 	ctx := WithProjectDir(context.Background(), projectDir)
 	args, _ := json.Marshal(shellExecArgs{Command: "pwd"})
 
@@ -103,27 +102,26 @@ func TestShellExecUsesProjectDir(t *testing.T) {
 	}
 }
 
-func TestShellExecFallsBackToSandbox(t *testing.T) {
-	cfg := sandboxForShell(t)
-	cfg.AllowedCommands = append(cfg.AllowedCommands, "pwd")
+func TestShellExecFallsBackToBaseDir(t *testing.T) {
+	baseDir := t.TempDir()
 
-	fn := ShellExec(cfg)
+	fn := ShellExec(baseDir)
 	args, _ := json.Marshal(shellExecArgs{Command: "pwd"})
 
 	out, err := fn(context.Background(), args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.TrimSpace(out) != cfg.BaseDir {
-		t.Fatalf("got %q, want %q", strings.TrimSpace(out), cfg.BaseDir)
+	if strings.TrimSpace(out) != baseDir {
+		t.Fatalf("got %q, want %q", strings.TrimSpace(out), baseDir)
 	}
 }
 
 func TestFileReadProjectDirPathTraversal(t *testing.T) {
-	cfg := sandboxForFile(t)
+	baseDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	fn := FileRead(cfg)
+	fn := FileRead(baseDir)
 	ctx := WithProjectDir(context.Background(), projectDir)
 	args, _ := json.Marshal(fileReadArgs{Path: "../../etc/passwd"})
 

@@ -10,8 +10,8 @@ import (
 )
 
 func TestProjectDocsListEmpty(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	dir := t.TempDir()
+	fn := ProjectDocs(dir)
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "list"})
 	out, err := fn(context.Background(), args)
@@ -30,12 +30,12 @@ func TestProjectDocsListEmpty(t *testing.T) {
 }
 
 func TestProjectDocsListWithFiles(t *testing.T) {
-	cfg := sandboxForFile(t)
-	wbDir := filepath.Join(cfg.BaseDir, ".waynebot")
+	dir := t.TempDir()
+	wbDir := filepath.Join(dir, ".waynebot")
 	os.MkdirAll(wbDir, 0o755)
 	os.WriteFile(filepath.Join(wbDir, "erd.md"), []byte("# ERD"), 0o644)
 
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(dir)
 	args, _ := json.Marshal(projectDocsArgs{Action: "list"})
 	out, err := fn(context.Background(), args)
 	if err != nil {
@@ -50,12 +50,12 @@ func TestProjectDocsListWithFiles(t *testing.T) {
 }
 
 func TestProjectDocsReadExists(t *testing.T) {
-	cfg := sandboxForFile(t)
-	wbDir := filepath.Join(cfg.BaseDir, ".waynebot")
+	dir := t.TempDir()
+	wbDir := filepath.Join(dir, ".waynebot")
 	os.MkdirAll(wbDir, 0o755)
 	os.WriteFile(filepath.Join(wbDir, "erd.md"), []byte("Users -> Posts"), 0o644)
 
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(dir)
 	args, _ := json.Marshal(projectDocsArgs{Action: "read", DocType: "erd"})
 	out, err := fn(context.Background(), args)
 	if err != nil {
@@ -67,8 +67,7 @@ func TestProjectDocsReadExists(t *testing.T) {
 }
 
 func TestProjectDocsReadNotFound(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(t.TempDir())
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "read", DocType: "erd"})
 	_, err := fn(context.Background(), args)
@@ -81,8 +80,7 @@ func TestProjectDocsReadNotFound(t *testing.T) {
 }
 
 func TestProjectDocsReadInvalidType(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(t.TempDir())
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "read", DocType: "bogus"})
 	_, err := fn(context.Background(), args)
@@ -95,8 +93,8 @@ func TestProjectDocsReadInvalidType(t *testing.T) {
 }
 
 func TestProjectDocsWriteCreatesDir(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	dir := t.TempDir()
+	fn := ProjectDocs(dir)
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "write", DocType: "erd", Content: "# New ERD"})
 	out, err := fn(context.Background(), args)
@@ -107,7 +105,7 @@ func TestProjectDocsWriteCreatesDir(t *testing.T) {
 		t.Errorf("expected success message, got: %s", out)
 	}
 
-	data, err := os.ReadFile(filepath.Join(cfg.BaseDir, ".waynebot", "erd.md"))
+	data, err := os.ReadFile(filepath.Join(dir, ".waynebot", "erd.md"))
 	if err != nil {
 		t.Fatalf("read written file: %v", err)
 	}
@@ -117,8 +115,7 @@ func TestProjectDocsWriteCreatesDir(t *testing.T) {
 }
 
 func TestProjectDocsWriteRejectsDecisions(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(t.TempDir())
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "write", DocType: "decisions", Content: "nope"})
 	_, err := fn(context.Background(), args)
@@ -131,8 +128,8 @@ func TestProjectDocsWriteRejectsDecisions(t *testing.T) {
 }
 
 func TestProjectDocsAppendDecisions(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	dir := t.TempDir()
+	fn := ProjectDocs(dir)
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "append", DocType: "decisions", Content: "We chose SQLite."})
 	out, err := fn(context.Background(), args)
@@ -143,7 +140,7 @@ func TestProjectDocsAppendDecisions(t *testing.T) {
 		t.Errorf("expected success message, got: %s", out)
 	}
 
-	data, err := os.ReadFile(filepath.Join(cfg.BaseDir, ".waynebot", "decisions.md"))
+	data, err := os.ReadFile(filepath.Join(dir, ".waynebot", "decisions.md"))
 	if err != nil {
 		t.Fatalf("read decisions: %v", err)
 	}
@@ -157,12 +154,12 @@ func TestProjectDocsAppendDecisions(t *testing.T) {
 }
 
 func TestProjectDocsAppendToExisting(t *testing.T) {
-	cfg := sandboxForFile(t)
-	wbDir := filepath.Join(cfg.BaseDir, ".waynebot")
+	dir := t.TempDir()
+	wbDir := filepath.Join(dir, ".waynebot")
 	os.MkdirAll(wbDir, 0o755)
 	os.WriteFile(filepath.Join(wbDir, "decisions.md"), []byte("## First\nFirst decision."), 0o644)
 
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(dir)
 	args, _ := json.Marshal(projectDocsArgs{Action: "append", DocType: "decisions", Content: "Second decision."})
 	_, err := fn(context.Background(), args)
 	if err != nil {
@@ -180,8 +177,7 @@ func TestProjectDocsAppendToExisting(t *testing.T) {
 }
 
 func TestProjectDocsAppendRejectsNonDecisions(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(t.TempDir())
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "append", DocType: "erd", Content: "stuff"})
 	_, err := fn(context.Background(), args)
@@ -194,8 +190,7 @@ func TestProjectDocsAppendRejectsNonDecisions(t *testing.T) {
 }
 
 func TestProjectDocsAppendEmptyContent(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(t.TempDir())
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "append", DocType: "decisions", Content: "  "})
 	_, err := fn(context.Background(), args)
@@ -205,8 +200,7 @@ func TestProjectDocsAppendEmptyContent(t *testing.T) {
 }
 
 func TestProjectDocsInvalidAction(t *testing.T) {
-	cfg := sandboxForFile(t)
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(t.TempDir())
 
 	args, _ := json.Marshal(projectDocsArgs{Action: "delete"})
 	_, err := fn(context.Background(), args)
@@ -219,13 +213,13 @@ func TestProjectDocsInvalidAction(t *testing.T) {
 }
 
 func TestProjectDocsUsesProjectDir(t *testing.T) {
-	cfg := sandboxForFile(t)
+	dir := t.TempDir()
 	projectDir := t.TempDir()
 	wbDir := filepath.Join(projectDir, ".waynebot")
 	os.MkdirAll(wbDir, 0o755)
 	os.WriteFile(filepath.Join(wbDir, "prd.md"), []byte("project PRD"), 0o644)
 
-	fn := ProjectDocs(cfg)
+	fn := ProjectDocs(dir)
 	ctx := WithProjectDir(context.Background(), projectDir)
 	args, _ := json.Marshal(projectDocsArgs{Action: "read", DocType: "prd"})
 

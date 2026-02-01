@@ -352,19 +352,20 @@ func TestAssembleContextWithProjectDocuments(t *testing.T) {
 	}
 
 	projDir := t.TempDir()
-	waynebotDir := filepath.Join(projDir, ".waynebot")
-	if err := os.MkdirAll(waynebotDir, 0755); err != nil {
-		t.Fatalf("mkdir .waynebot: %v", err)
+	for _, dir := range []string{"erd", "prd", "decisions"} {
+		if err := os.MkdirAll(filepath.Join(projDir, dir), 0755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
 	}
 
-	if err := os.WriteFile(filepath.Join(waynebotDir, "erd.md"), []byte("# ERD\nUsers -> Posts -> Comments"), 0644); err != nil {
-		t.Fatalf("write erd.md: %v", err)
+	if err := os.WriteFile(filepath.Join(projDir, "erd", "main.md"), []byte("# ERD\nUsers -> Posts -> Comments"), 0644); err != nil {
+		t.Fatalf("write erd/main.md: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(waynebotDir, "prd.md"), []byte("# PRD\nBuild a chat app with AI agents."), 0644); err != nil {
-		t.Fatalf("write prd.md: %v", err)
+	if err := os.WriteFile(filepath.Join(projDir, "prd", "main.md"), []byte("# PRD\nBuild a chat app with AI agents."), 0644); err != nil {
+		t.Fatalf("write prd/main.md: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(waynebotDir, "decisions.md"), []byte("## Use SQLite\nWe chose SQLite for simplicity.\n---\n## Use Go\nGo is fast and simple."), 0644); err != nil {
-		t.Fatalf("write decisions.md: %v", err)
+	if err := os.WriteFile(filepath.Join(projDir, "decisions", "log.md"), []byte("## Use SQLite\nWe chose SQLite for simplicity.\n---\n## Use Go\nGo is fast and simple."), 0644); err != nil {
+		t.Fatalf("write decisions/log.md: %v", err)
 	}
 
 	proj, err := model.CreateProject(d, "docsproj", projDir, "A project with docs")
@@ -422,7 +423,7 @@ func TestAssembleContextWithoutProjectDocuments(t *testing.T) {
 		t.Fatalf("create channel: %v", err)
 	}
 
-	// Project with no .waynebot directory.
+	// Project with no document directories.
 	proj, err := model.CreateProject(d, "nodocsproject", t.TempDir(), "No docs")
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -446,7 +447,7 @@ func TestAssembleContextWithoutProjectDocuments(t *testing.T) {
 	})
 
 	if budget.DocumentTokens != 0 {
-		t.Errorf("expected 0 DocumentTokens without .waynebot dir, got %d", budget.DocumentTokens)
+		t.Errorf("expected 0 DocumentTokens without doc dirs, got %d", budget.DocumentTokens)
 	}
 }
 
@@ -546,16 +547,14 @@ func TestAssembleContextDocsBudget(t *testing.T) {
 	}
 
 	projDir := t.TempDir()
-	wbDir := filepath.Join(projDir, ".waynebot")
-	if err := os.MkdirAll(wbDir, 0755); err != nil {
-		t.Fatalf("mkdir .waynebot: %v", err)
-	}
+	os.MkdirAll(filepath.Join(projDir, "erd"), 0755)
+	os.MkdirAll(filepath.Join(projDir, "prd"), 0755)
 
 	// Write ERD and PRD that together exceed maxDocumentChars (32000).
 	bigERD := strings.Repeat("E", 20_000)
 	bigPRD := strings.Repeat("P", 20_000)
-	os.WriteFile(filepath.Join(wbDir, "erd.md"), []byte(bigERD), 0644)
-	os.WriteFile(filepath.Join(wbDir, "prd.md"), []byte(bigPRD), 0644)
+	os.WriteFile(filepath.Join(projDir, "erd", "main.md"), []byte(bigERD), 0644)
+	os.WriteFile(filepath.Join(projDir, "prd", "main.md"), []byte(bigPRD), 0644)
 
 	proj, err := model.CreateProject(d, "budgetdocsproj", projDir, "docs budget test")
 	if err != nil {

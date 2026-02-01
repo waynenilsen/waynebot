@@ -146,10 +146,15 @@ export interface Project {
   created_at: string;
 }
 
+export interface ProjectDocumentList {
+  type: string;
+  files: string[];
+}
+
 export interface ProjectDocument {
   type: string;
+  filename: string;
   content: string;
-  exists: boolean;
 }
 
 export interface ContextBudget {

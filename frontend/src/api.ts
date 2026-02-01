@@ -14,6 +14,7 @@ import type {
   Persona,
   Project,
   ProjectDocument,
+  ProjectDocumentList,
   ToolExecution,
   User,
 } from "./types";
@@ -322,26 +323,39 @@ export async function deleteProject(id: number): Promise<void> {
 
 export async function getProjectDocuments(
   projectId: number,
-): Promise<ProjectDocument[]> {
-  return apiFetch<ProjectDocument[]>(`/api/projects/${projectId}/documents`);
+): Promise<ProjectDocumentList[]> {
+  return apiFetch<ProjectDocumentList[]>(
+    `/api/projects/${projectId}/documents`,
+  );
+}
+
+export async function getCategoryDocuments(
+  projectId: number,
+  type: string,
+): Promise<ProjectDocumentList> {
+  return apiFetch<ProjectDocumentList>(
+    `/api/projects/${projectId}/documents/${type}`,
+  );
 }
 
 export async function getProjectDocument(
   projectId: number,
   type: string,
+  filename: string,
 ): Promise<ProjectDocument> {
   return apiFetch<ProjectDocument>(
-    `/api/projects/${projectId}/documents/${type}`,
+    `/api/projects/${projectId}/documents/${type}/${encodeURIComponent(filename)}`,
   );
 }
 
 export async function updateProjectDocument(
   projectId: number,
   type: string,
+  filename: string,
   content: string,
 ): Promise<ProjectDocument> {
   return apiFetch<ProjectDocument>(
-    `/api/projects/${projectId}/documents/${type}`,
+    `/api/projects/${projectId}/documents/${type}/${encodeURIComponent(filename)}`,
     {
       method: "PUT",
       body: JSON.stringify({ content }),
@@ -349,14 +363,32 @@ export async function updateProjectDocument(
   );
 }
 
-export async function appendDecision(
+export async function appendToDocument(
   projectId: number,
+  type: string,
+  filename: string,
   content: string,
 ): Promise<void> {
-  return apiFetch<void>(`/api/projects/${projectId}/documents/decisions`, {
-    method: "POST",
-    body: JSON.stringify({ content }),
-  });
+  return apiFetch<void>(
+    `/api/projects/${projectId}/documents/${type}/${encodeURIComponent(filename)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    },
+  );
+}
+
+export async function deleteDocument(
+  projectId: number,
+  type: string,
+  filename: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/projects/${projectId}/documents/${type}/${encodeURIComponent(filename)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 export async function getChannelProjects(

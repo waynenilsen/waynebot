@@ -90,9 +90,11 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 
 		doch := &DocumentHandler{DB: database}
 		r.With(auth.RequireAuth).Get("/projects/{id}/documents", doch.ListDocuments)
-		r.With(auth.RequireAuth).Get("/projects/{id}/documents/{type}", doch.GetDocument)
-		r.With(auth.RequireAuth).Put("/projects/{id}/documents/{type}", doch.PutDocument)
-		r.With(auth.RequireAuth).Post("/projects/{id}/documents/decisions", doch.AppendDecision)
+		r.With(auth.RequireAuth).Get("/projects/{id}/documents/{type}", doch.ListCategoryDocuments)
+		r.With(auth.RequireAuth).Get("/projects/{id}/documents/{type}/{filename}", doch.GetDocument)
+		r.With(auth.RequireAuth).Put("/projects/{id}/documents/{type}/{filename}", doch.PutDocument)
+		r.With(auth.RequireAuth).Post("/projects/{id}/documents/{type}/{filename}", doch.AppendDocument)
+		r.With(auth.RequireAuth).Delete("/projects/{id}/documents/{type}/{filename}", doch.DeleteDocument)
 
 		r.With(auth.RequireAuth).Post("/invites", ih.CreateInvite)
 		r.With(auth.RequireAuth).Get("/invites", ih.ListInvites)

@@ -247,61 +247,78 @@ func readAgentsMd(projectPath string) string {
 	return "\n\n## Project Instructions (AGENTS.md)\n" + content
 }
 
-// readProjectDocuments reads erd.md, prd.md, and decisions.md from a project's
-// .waynebot/ directory and returns a formatted block. Returns empty string if
-// the directory doesn't exist or no documents are found.
+// readProjectDocuments reads all markdown files from a project's erd/, prd/,
+// and decisions/ directories and returns a formatted block. Returns empty
+// string if no documents are found.
 func readProjectDocuments(projectPath string) string {
-	waynebotDir := filepath.Join(projectPath, ".waynebot")
-	if _, err := os.Stat(waynebotDir); os.IsNotExist(err) {
-		return ""
-	}
-
 	type doc struct {
-		name    string
-		file    string
-		content string
+		category string
+		filename string
+		content  string
 	}
 
-	// Read in priority order: erd > prd > decisions.
-	docs := []doc{
-		{name: "ERD (Entity Relationship Diagram)", file: "erd.md"},
-		{name: "PRD (Product Requirements)", file: "prd.md"},
-		{name: "Recent Decisions", file: "decisions.md"},
+	categories := []struct {
+		dir   string
+		label string
+	}{
+		{"erd", "ERD"},
+		{"prd", "PRD"},
+		{"decisions", "Decisions"},
 	}
 
 	totalChars := 0
 	var included []doc
+	budgetExceeded := false
 
-	for _, d := range docs {
-		data, err := os.ReadFile(filepath.Join(waynebotDir, d.file))
+	for _, cat := range categories {
+		if budgetExceeded {
+			break
+		}
+		dir := filepath.Join(projectPath, cat.dir)
+		entries, err := os.ReadDir(dir)
 		if err != nil {
 			continue
 		}
-		content := strings.TrimSpace(string(data))
-		if content == "" {
-			continue
-		}
-
-		// For decisions, only keep the last N entries.
-		if d.file == "decisions.md" {
-			content = truncateDecisions(content, maxDecisionEntries)
-		}
-
-		// Check if adding this doc would exceed the budget.
-		if totalChars+len(content) > maxDocumentChars {
-			// Truncate to fit remaining budget.
-			remaining := maxDocumentChars - totalChars
-			if remaining > 0 {
-				d.content = content[:remaining]
-				totalChars += remaining
-				included = append(included, d)
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+				continue
 			}
-			break
-		}
+			data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			if err != nil {
+				continue
+			}
+			content := strings.TrimSpace(string(data))
+			if content == "" {
+				continue
+			}
 
-		d.content = content
-		totalChars += len(content)
-		included = append(included, d)
+			// For decision files, only keep the last N entries.
+			if cat.dir == "decisions" {
+				content = truncateDecisions(content, maxDecisionEntries)
+			}
+
+			// Check if adding this doc would exceed the budget.
+			if totalChars+len(content) > maxDocumentChars {
+				remaining := maxDocumentChars - totalChars
+				if remaining > 0 {
+					included = append(included, doc{
+						category: cat.label,
+						filename: e.Name(),
+						content:  content[:remaining],
+					})
+					totalChars += remaining
+				}
+				budgetExceeded = true
+				break
+			}
+
+			included = append(included, doc{
+				category: cat.label,
+				filename: e.Name(),
+				content:  content,
+			})
+			totalChars += len(content)
+		}
 	}
 
 	if len(included) == 0 {
@@ -311,7 +328,7 @@ func readProjectDocuments(projectPath string) string {
 	var sb strings.Builder
 	sb.WriteString("\n\n## Project Documents\n")
 	for _, d := range included {
-		sb.WriteString(fmt.Sprintf("\n### %s\n%s\n", d.name, d.content))
+		sb.WriteString(fmt.Sprintf("\n### %s — %s\n%s\n", d.category, d.filename, d.content))
 	}
 	return sb.String()
 }

@@ -95,7 +95,7 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 	"project_docs": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "project_docs",
-			Description: param.NewOpt("Read, write, or list project documents (.waynebot/ directory). Use action=list to see which docs exist, action=read to read a doc, action=write to create/update erd or prd, action=append to add a timestamped entry to the decisions log."),
+			Description: param.NewOpt("Read, write, or list project documents stored in erd/, prd/, decisions/ directories. Each directory can contain multiple markdown files. Use action=list to see which files exist (optionally filter by doc_type), action=read to read a specific file, action=write to create/update a file, action=append to add a timestamped entry to a file."),
 			Parameters: shared.FunctionParameters{
 				"type": "object",
 				"properties": map[string]any{
@@ -107,7 +107,11 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 					"doc_type": map[string]any{
 						"type":        "string",
 						"enum":        []string{"erd", "prd", "decisions"},
-						"description": "The document type (required for read, write, append).",
+						"description": "The document category. Required for read, write, append. Optional for list (omit to list all categories).",
+					},
+					"filename": map[string]any{
+						"type":        "string",
+						"description": "The filename (e.g. 'main' or 'main.md'). Required for read, write, append.",
 					},
 					"content": map[string]any{
 						"type":        "string",

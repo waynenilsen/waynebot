@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/auth"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -37,6 +40,17 @@ func ErrorResponse(w http.ResponseWriter, status int, msg string) {
 // Returns nil if no user is present (response already written).
 func GetUser(r *http.Request) *model.User {
 	return auth.UserFromContext(r.Context())
+}
+
+// ParseIntParam extracts a named URL parameter as int64, writing a 400 error on failure.
+// Returns the parsed value and true on success, or 0 and false if the response was written.
+func ParseIntParam(w http.ResponseWriter, r *http.Request, param string) (int64, bool) {
+	v, err := strconv.ParseInt(chi.URLParam(r, param), 10, 64)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid "+param)
+		return 0, false
+	}
+	return v, true
 }
 
 // Validation helpers

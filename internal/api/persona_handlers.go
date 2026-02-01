@@ -3,11 +3,8 @@ package api
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -125,9 +122,8 @@ func (h *PersonaHandler) CreatePersona(w http.ResponseWriter, r *http.Request) {
 
 // UpdatePersona updates an existing persona.
 func (h *PersonaHandler) UpdatePersona(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona id")
+	id, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -177,9 +173,8 @@ func (h *PersonaHandler) UpdatePersona(w http.ResponseWriter, r *http.Request) {
 
 // DeletePersona deletes a persona.
 func (h *PersonaHandler) DeletePersona(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona id")
+	id, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 

@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -33,9 +31,8 @@ type contextBudgetJSON struct {
 
 // ContextBudget returns the current context budget estimate for a persona+channel.
 func (h *ContextHandler) ContextBudget(w http.ResponseWriter, r *http.Request) {
-	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+	personaID, ok := ParseIntParam(w, r, "persona_id")
+	if !ok {
 		return
 	}
 
@@ -98,15 +95,13 @@ func (h *ContextHandler) ContextBudget(w http.ResponseWriter, r *http.Request) {
 
 // ResetContext resets an agent's context for a channel by advancing the cursor.
 func (h *ContextHandler) ResetContext(w http.ResponseWriter, r *http.Request) {
-	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+	personaID, ok := ParseIntParam(w, r, "persona_id")
+	if !ok {
 		return
 	}
 
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "channel_id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel_id")
+	channelID, ok := ParseIntParam(w, r, "channel_id")
+	if !ok {
 		return
 	}
 

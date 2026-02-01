@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -176,9 +175,8 @@ func (h *DocumentHandler) AppendDecision(w http.ResponseWriter, r *http.Request)
 
 // lookupProject extracts the project ID from the URL, fetches it, and validates the path.
 func (h *DocumentHandler) lookupProject(w http.ResponseWriter, r *http.Request) (model.Project, bool) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid project id")
+	id, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return model.Project{}, false
 	}
 

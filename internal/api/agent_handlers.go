@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -157,9 +155,8 @@ type agentStatsJSON struct {
 
 // LLMCalls returns paginated LLM calls for a persona.
 func (h *AgentHandler) LLMCalls(w http.ResponseWriter, r *http.Request) {
-	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+	personaID, ok := ParseIntParam(w, r, "persona_id")
+	if !ok {
 		return
 	}
 
@@ -180,9 +177,8 @@ func (h *AgentHandler) LLMCalls(w http.ResponseWriter, r *http.Request) {
 
 // ToolExecutions returns paginated tool executions for a persona.
 func (h *AgentHandler) ToolExecutions(w http.ResponseWriter, r *http.Request) {
-	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+	personaID, ok := ParseIntParam(w, r, "persona_id")
+	if !ok {
 		return
 	}
 
@@ -203,9 +199,8 @@ func (h *AgentHandler) ToolExecutions(w http.ResponseWriter, r *http.Request) {
 
 // Stats returns summary statistics for a persona.
 func (h *AgentHandler) Stats(w http.ResponseWriter, r *http.Request) {
-	personaID, err := strconv.ParseInt(chi.URLParam(r, "persona_id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid persona_id")
+	personaID, ok := ParseIntParam(w, r, "persona_id")
+	if !ok {
 		return
 	}
 

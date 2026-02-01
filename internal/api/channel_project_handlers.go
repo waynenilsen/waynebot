@@ -3,9 +3,6 @@ package api
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -22,9 +19,8 @@ type addChannelProjectRequest struct {
 
 // ListChannelProjects returns all projects associated with a channel.
 func (h *ChannelProjectHandler) ListChannelProjects(w http.ResponseWriter, r *http.Request) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -52,9 +48,8 @@ func (h *ChannelProjectHandler) ListChannelProjects(w http.ResponseWriter, r *ht
 
 // AddChannelProject associates a project with a channel.
 func (h *ChannelProjectHandler) AddChannelProject(w http.ResponseWriter, r *http.Request) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -97,15 +92,13 @@ func (h *ChannelProjectHandler) AddChannelProject(w http.ResponseWriter, r *http
 
 // RemoveChannelProject removes a project association from a channel.
 func (h *ChannelProjectHandler) RemoveChannelProject(w http.ResponseWriter, r *http.Request) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 
-	projectID, err := strconv.ParseInt(chi.URLParam(r, "projectID"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid project id")
+	projectID, ok := ParseIntParam(w, r, "projectID")
+	if !ok {
 		return
 	}
 

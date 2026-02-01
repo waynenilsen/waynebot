@@ -3,11 +3,8 @@ package api
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -95,9 +92,8 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 
 // UpdateProject updates an existing project.
 func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid project id")
+	id, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -152,9 +148,8 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 
 // DeleteProject deletes a project.
 func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid project id")
+	id, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return
 	}
 

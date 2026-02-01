@@ -4,9 +4,6 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
-	"strconv"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
@@ -37,9 +34,8 @@ type removeMemberRequest struct {
 }
 
 func (h *MemberHandler) parseChannelID(w http.ResponseWriter, r *http.Request) (int64, bool) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return 0, false
 	}
 	if _, err := model.GetChannel(h.DB, channelID); err != nil {

@@ -3,10 +3,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -148,15 +145,12 @@ func (h *ReactionHandler) RemoveReaction(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *ReactionHandler) parseParams(w http.ResponseWriter, r *http.Request) (channelID, messageID int64, ok bool) {
-	var err error
-	channelID, err = strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok = ParseIntParam(w, r, "id")
+	if !ok {
 		return 0, 0, false
 	}
-	messageID, err = strconv.ParseInt(chi.URLParam(r, "messageID"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid message id")
+	messageID, ok = ParseIntParam(w, r, "messageID")
+	if !ok {
 		return 0, 0, false
 	}
 	return channelID, messageID, true

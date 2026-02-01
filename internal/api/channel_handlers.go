@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -147,9 +145,8 @@ func (h *ChannelHandler) CreateChannel(w http.ResponseWriter, r *http.Request) {
 // Returns the channelID and true on success, or writes an error response
 // and returns false.
 func (h *ChannelHandler) requireChannelMember(w http.ResponseWriter, r *http.Request) (int64, bool) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok := ParseIntParam(w, r, "id")
+	if !ok {
 		return 0, false
 	}
 

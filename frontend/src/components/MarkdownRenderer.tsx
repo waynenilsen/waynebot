@@ -1,5 +1,7 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import Markdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface MarkdownRendererProps {
   content: string;
@@ -53,6 +55,54 @@ function highlightMentions(children: ReactNode): ReactNode {
   return children;
 }
 
+const codeBlockStyle: Record<string, React.CSSProperties> = {
+  ...oneDark,
+  'pre[class*="language-"]': {
+    ...oneDark['pre[class*="language-"]'],
+    background: "rgba(15, 52, 96, 0.6)",
+    margin: 0,
+    padding: "0.75rem 1rem",
+    fontSize: "0.75rem",
+    lineHeight: "1.5",
+    borderRadius: 0,
+  },
+  'code[class*="language-"]': {
+    ...oneDark['code[class*="language-"]'],
+    background: "none",
+    fontSize: "0.75rem",
+  },
+};
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="text-[10px] px-1.5 py-0.5 rounded bg-[#0f3460]/80 text-[#a0a0b8] hover:text-[#e2b714] hover:bg-[#0f3460] transition-colors cursor-pointer"
+    >
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+}
+
+function extractText(children: ReactNode): string {
+  if (typeof children === "string") return children;
+  if (Array.isArray(children)) return children.map(extractText).join("");
+  if (children && typeof children === "object" && "props" in children) {
+    const props = (children as { props: { children?: ReactNode } }).props;
+    if (props?.children != null) return extractText(props.children);
+  }
+  return "";
+}
+
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
     <div className="markdown-content text-sm leading-relaxed">
@@ -69,12 +119,26 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </a>
           ),
           code: ({ className, children }) => {
-            const isBlock = className?.startsWith("language-");
-            if (isBlock) {
+            const langMatch = className?.match(/language-(\w+)/);
+            if (langMatch) {
+              const language = langMatch[1];
+              const codeString = extractText(children).replace(/\n$/, "");
               return (
-                <code className="block bg-[#0f3460]/60 rounded px-3 py-2 my-2 text-xs overflow-x-auto border border-[#e2b714]/10 text-[#c8c8e0]">
-                  {children}
-                </code>
+                <div className="rounded overflow-hidden border border-[#e2b714]/10 my-2">
+                  <div className="flex items-center justify-between px-3 py-1 bg-[#0f3460]/80 border-b border-[#e2b714]/10">
+                    <span className="text-[10px] font-mono text-[#a0a0b8]/70 uppercase tracking-wider">
+                      {language}
+                    </span>
+                    <CopyButton text={codeString} />
+                  </div>
+                  <SyntaxHighlighter
+                    style={codeBlockStyle}
+                    language={language}
+                    PreTag="div"
+                  >
+                    {codeString}
+                  </SyntaxHighlighter>
+                </div>
               );
             }
             return (

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useProjects } from "../hooks/useProjects";
 import ProjectForm from "../components/ProjectForm";
+import ProjectDocuments from "../components/ProjectDocuments";
 import type { Project } from "../types";
 
 type ProjectData = Omit<Project, "id" | "created_at">;
@@ -11,6 +12,7 @@ export default function ProjectsPage() {
   const [editing, setEditing] = useState<Project | null>(null);
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [docsOpen, setDocsOpen] = useState<number | null>(null);
 
   const showForm = creating || editing !== null;
 
@@ -109,6 +111,18 @@ export default function ProjectsPage() {
 
                   <div className="flex items-center gap-1 shrink-0">
                     <button
+                      onClick={() =>
+                        setDocsOpen(docsOpen === p.id ? null : p.id)
+                      }
+                      className={`text-xs px-2 py-1 rounded transition-colors cursor-pointer ${
+                        docsOpen === p.id
+                          ? "text-[#e2b714] bg-[#e2b714]/10"
+                          : "text-[#a0a0b8]/40 hover:text-[#e2b714] hover:bg-[#e2b714]/5"
+                      }`}
+                    >
+                      docs
+                    </button>
+                    <button
                       onClick={() => setEditing(p)}
                       className="text-[#a0a0b8]/40 hover:text-[#e2b714] text-xs px-2 py-1 rounded hover:bg-[#e2b714]/5 transition-colors cursor-pointer"
                     >
@@ -139,6 +153,14 @@ export default function ProjectsPage() {
                     )}
                   </div>
                 </div>
+                {docsOpen === p.id && (
+                  <div className="mt-3 border-t border-[#e2b714]/10 pt-3 -mx-4 -mb-4 h-96">
+                    <ProjectDocuments
+                      projectId={p.id}
+                      onClose={() => setDocsOpen(null)}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

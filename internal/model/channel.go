@@ -99,6 +99,19 @@ func ListChannels(d *db.DB) ([]Channel, error) {
 	return channels, rows.Err()
 }
 
+// IsDMParticipant checks whether a user is a participant in a DM channel.
+func IsDMParticipant(d *db.DB, channelID, userID int64) (bool, error) {
+	var count int
+	err := d.SQL.QueryRow(
+		"SELECT COUNT(*) FROM dm_participants WHERE channel_id = ? AND user_id = ?",
+		channelID, userID,
+	).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // CreateDMChannel creates a DM channel between two participants.
 // If either participant is a persona, it is auto-subscribed via persona_channels.
 func CreateDMChannel(d *db.DB, name string, p1, p2 DMParticipant, createdBy int64) (Channel, error) {

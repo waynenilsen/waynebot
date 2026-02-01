@@ -73,18 +73,21 @@ func toMessageJSON(m model.Message) messageJSON {
 	}
 }
 
-// ListChannels returns all channels with unread counts for the authenticated user.
+// ListChannels returns channels the authenticated user is a member of, with unread counts.
 func (h *ChannelHandler) ListChannels(w http.ResponseWriter, r *http.Request) {
-	channels, err := model.ListChannels(h.DB)
+	user := GetUser(r)
+	if user == nil {
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	channels, err := model.ListChannelsForUser(h.DB, user.ID)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	var counts map[int64]int64
-	if user := GetUser(r); user != nil {
-		counts, _ = model.GetUnreadCounts(h.DB, user.ID)
-	}
+	counts, _ := model.GetUnreadCounts(h.DB, user.ID)
 
 	out := make([]channelWithUnreadJSON, len(channels))
 	for i, ch := range channels {
@@ -96,8 +99,14 @@ func (h *ChannelHandler) ListChannels(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, out)
 }
 
-// CreateChannel creates a new channel.
+// CreateChannel creates a new channel and adds the creator as owner.
 func (h *ChannelHandler) CreateChannel(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
 	var req createChannelRequest
 	if err := ReadJSON(r, &req); err != nil {
 		ErrorResponse(w, http.StatusBadRequest, err.Error())
@@ -126,24 +135,72 @@ func (h *ChannelHandler) CreateChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Auto-add creator as channel owner.
+	if err := model.AddChannelMember(h.DB, ch.ID, user.ID, "owner"); err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
 	WriteJSON(w, http.StatusCreated, toChannelJSON(ch))
+}
+
+// requireChannelMember parses the channel ID, verifies the channel exists,
+// and checks that the authenticated user is a member. For DM channels it
+// checks dm_participants; for regular channels it checks channel_members.
+// Returns the channelID and true on success, or writes an error response
+// and returns false.
+func (h *ChannelHandler) requireChannelMember(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+		return 0, false
+	}
+
+	ch, err := model.GetChannel(h.DB, channelID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ErrorResponse(w, http.StatusNotFound, "channel not found")
+			return 0, false
+		}
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return 0, false
+	}
+
+	user := GetUser(r)
+	if user == nil {
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
+		return 0, false
+	}
+
+	if ch.IsDM {
+		isMember, err := model.IsDMParticipant(h.DB, channelID, user.ID)
+		if err != nil {
+			ErrorResponse(w, http.StatusInternalServerError, "internal error")
+			return 0, false
+		}
+		if !isMember {
+			ErrorResponse(w, http.StatusForbidden, "not a channel member")
+			return 0, false
+		}
+	} else {
+		isMember, err := model.IsChannelMember(h.DB, channelID, user.ID)
+		if err != nil {
+			ErrorResponse(w, http.StatusInternalServerError, "internal error")
+			return 0, false
+		}
+		if !isMember {
+			ErrorResponse(w, http.StatusForbidden, "not a channel member")
+			return 0, false
+		}
+	}
+
+	return channelID, true
 }
 
 // GetMessages returns paginated messages for a channel.
 func (h *ChannelHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
-		return
-	}
-
-	// Verify channel exists.
-	if _, err := model.GetChannel(h.DB, channelID); err != nil {
-		if err == sql.ErrNoRows {
-			ErrorResponse(w, http.StatusNotFound, "channel not found")
-			return
-		}
-		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+	channelID, ok := h.requireChannelMember(w, r)
+	if !ok {
 		return
 	}
 
@@ -157,24 +214,23 @@ func (h *ChannelHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	var messages []model.Message
+	var (
+		messages []model.Message
+		err      error
+	)
 	if before := r.URL.Query().Get("before"); before != "" {
-		beforeID, err := strconv.ParseInt(before, 10, 64)
-		if err != nil {
+		beforeID, parseErr := strconv.ParseInt(before, 10, 64)
+		if parseErr != nil {
 			ErrorResponse(w, http.StatusBadRequest, "invalid before parameter")
 			return
 		}
 		messages, err = model.GetMessagesBefore(h.DB, channelID, beforeID, limit)
-		if err != nil {
-			ErrorResponse(w, http.StatusInternalServerError, "internal error")
-			return
-		}
 	} else {
 		messages, err = model.GetRecentMessages(h.DB, channelID, limit)
-		if err != nil {
-			ErrorResponse(w, http.StatusInternalServerError, "internal error")
-			return
-		}
+	}
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+		return
 	}
 
 	// Fetch reactions for all messages in one batch query.
@@ -201,27 +257,12 @@ func (h *ChannelHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 
 // PostMessage sends a message to a channel.
 func (h *ChannelHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
-		return
-	}
-
-	// Verify channel exists.
-	if _, err := model.GetChannel(h.DB, channelID); err != nil {
-		if err == sql.ErrNoRows {
-			ErrorResponse(w, http.StatusNotFound, "channel not found")
-			return
-		}
-		ErrorResponse(w, http.StatusInternalServerError, "internal error")
+	channelID, ok := h.requireChannelMember(w, r)
+	if !ok {
 		return
 	}
 
 	user := GetUser(r)
-	if user == nil {
-		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
 
 	var req postMessageRequest
 	if err := ReadJSON(r, &req); err != nil {
@@ -253,17 +294,12 @@ func (h *ChannelHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 
 // MarkRead updates the user's read position for a channel to the latest message.
 func (h *ChannelHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
-	channelID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid channel id")
+	channelID, ok := h.requireChannelMember(w, r)
+	if !ok {
 		return
 	}
 
 	user := GetUser(r)
-	if user == nil {
-		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
 
 	latestID, err := model.GetLatestMessageID(h.DB, channelID)
 	if err != nil {

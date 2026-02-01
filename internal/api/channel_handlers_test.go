@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"github.com/waynenilsen/waynebot/internal/model"
 )
 
 func createChannel(t *testing.T, router http.Handler, token, name, description string) int64 {
@@ -313,14 +311,9 @@ func TestGetMessagesEmptyChannel(t *testing.T) {
 	d := openTestDB(t)
 	router := newTestRouter(t, d)
 	token := registerUser(t, router, "alice", "password123", "")
+	chID := createChannel(t, router, token, "empty", "")
 
-	// Create channel directly via model to keep it clean.
-	ch, err := model.CreateChannel(d, "empty", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	rec := doJSON(t, router, "GET", fmt.Sprintf("/api/channels/%d/messages", ch.ID), "",
+	rec := doJSON(t, router, "GET", fmt.Sprintf("/api/channels/%d/messages", chID), "",
 		"Authorization", "Bearer "+token)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -330,5 +323,106 @@ func TestGetMessagesEmptyChannel(t *testing.T) {
 	json.NewDecoder(rec.Body).Decode(&msgs)
 	if len(msgs) != 0 {
 		t.Errorf("expected empty list, got %d", len(msgs))
+	}
+}
+
+func TestListChannelsOnlyShowsMemberChannels(t *testing.T) {
+	d := openTestDB(t)
+	router := newTestRouter(t, d)
+	aliceToken := registerUser(t, router, "alice", "password123", "")
+
+	// Use an invite code from alice to register bob.
+	rec := doJSON(t, router, "POST", "/api/invites", `{}`, "Authorization", "Bearer "+aliceToken)
+	var inv struct {
+		Code string `json:"code"`
+	}
+	json.NewDecoder(rec.Body).Decode(&inv)
+	bobToken := registerUser(t, router, "bob", "password123", inv.Code)
+
+	// Alice creates two channels (she's auto-added as owner).
+	createChannel(t, router, aliceToken, "general", "")
+	createChannel(t, router, aliceToken, "random", "")
+
+	// Bob should see zero channels.
+	rec = doJSON(t, router, "GET", "/api/channels", "", "Authorization", "Bearer "+bobToken)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var bobChannels []any
+	json.NewDecoder(rec.Body).Decode(&bobChannels)
+	if len(bobChannels) != 0 {
+		t.Errorf("bob expected 0 channels, got %d", len(bobChannels))
+	}
+
+	// Alice should see two channels.
+	rec = doJSON(t, router, "GET", "/api/channels", "", "Authorization", "Bearer "+aliceToken)
+	var aliceChannels []any
+	json.NewDecoder(rec.Body).Decode(&aliceChannels)
+	if len(aliceChannels) != 2 {
+		t.Errorf("alice expected 2 channels, got %d", len(aliceChannels))
+	}
+}
+
+func TestNonMemberGetMessagesForbidden(t *testing.T) {
+	d := openTestDB(t)
+	router := newTestRouter(t, d)
+	aliceToken := registerUser(t, router, "alice", "password123", "")
+
+	rec := doJSON(t, router, "POST", "/api/invites", `{}`, "Authorization", "Bearer "+aliceToken)
+	var inv struct {
+		Code string `json:"code"`
+	}
+	json.NewDecoder(rec.Body).Decode(&inv)
+	bobToken := registerUser(t, router, "bob", "password123", inv.Code)
+
+	chID := createChannel(t, router, aliceToken, "general", "")
+
+	rec = doJSON(t, router, "GET", fmt.Sprintf("/api/channels/%d/messages", chID), "",
+		"Authorization", "Bearer "+bobToken)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestNonMemberPostMessageForbidden(t *testing.T) {
+	d := openTestDB(t)
+	router := newTestRouter(t, d)
+	aliceToken := registerUser(t, router, "alice", "password123", "")
+
+	rec := doJSON(t, router, "POST", "/api/invites", `{}`, "Authorization", "Bearer "+aliceToken)
+	var inv struct {
+		Code string `json:"code"`
+	}
+	json.NewDecoder(rec.Body).Decode(&inv)
+	bobToken := registerUser(t, router, "bob", "password123", inv.Code)
+
+	chID := createChannel(t, router, aliceToken, "general", "")
+
+	rec = doJSON(t, router, "POST", fmt.Sprintf("/api/channels/%d/messages", chID),
+		`{"content":"sneaky"}`,
+		"Authorization", "Bearer "+bobToken)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestNonMemberMarkReadForbidden(t *testing.T) {
+	d := openTestDB(t)
+	router := newTestRouter(t, d)
+	aliceToken := registerUser(t, router, "alice", "password123", "")
+
+	rec := doJSON(t, router, "POST", "/api/invites", `{}`, "Authorization", "Bearer "+aliceToken)
+	var inv struct {
+		Code string `json:"code"`
+	}
+	json.NewDecoder(rec.Body).Decode(&inv)
+	bobToken := registerUser(t, router, "bob", "password123", inv.Code)
+
+	chID := createChannel(t, router, aliceToken, "general", "")
+
+	rec = doJSON(t, router, "POST", fmt.Sprintf("/api/channels/%d/read", chID), "",
+		"Authorization", "Bearer "+bobToken)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 }

@@ -38,6 +38,8 @@ when you finish a chunk of work, format the code, use git add . to add everythin
 ## running the app locally
 
 backend: `go run ./cmd/waynebot` — listens on :59731
-frontend: `cd frontend && npm run dev` — listens on :53461, proxies /api and /ws to the backend via vite.config.ts
+frontend: `cd frontend && bun run dev` — listens on :53461, proxies /api and /ws to the backend via vite.config.ts
 open http://localhost:53461 to use the app
 first user can register without an invite code (bootstrap mode)
+
+frontend uses bun never use npm

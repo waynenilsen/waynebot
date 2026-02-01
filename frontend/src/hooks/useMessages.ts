@@ -22,7 +22,9 @@ export function useMessages(channelId: number | null) {
     api
       .getMessages(channelId, { limit: 50 })
       .then((msgs) => {
-        setMessages(channelId, msgs);
+        // Backend returns newest-first, but we need oldest-first for display
+        const reversed = [...msgs].reverse();
+        setMessages(channelId, reversed);
         setHasMore(msgs.length >= 50);
       })
       .catch((err) => pushError(`Failed to load messages: ${err.message}`))
@@ -41,7 +43,9 @@ export function useMessages(channelId: number | null) {
       });
       if (older.length < 50) setHasMore(false);
       if (older.length > 0) {
-        setMessages(channelId, [...older, ...messages]);
+        // Backend returns newest-first, reverse to get oldest-first
+        const reversed = [...older].reverse();
+        setMessages(channelId, [...reversed, ...messages]);
       }
     } catch (err) {
       pushError(

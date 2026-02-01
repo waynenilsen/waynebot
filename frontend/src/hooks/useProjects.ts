@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../api";
 import type { Project } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 type ProjectData = Omit<Project, "id" | "created_at">;
 
@@ -26,7 +27,7 @@ export function useProjects(): UseProjects {
       setProjects(data);
     } catch (err) {
       pushError(
-        `Failed to load projects: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to load projects: ${getErrorMessage(err)}`,
       );
     } finally {
       setLoading(false);
@@ -45,7 +46,7 @@ export function useProjects(): UseProjects {
         return project;
       } catch (err) {
         pushError(
-          `Failed to create project: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to create project: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -61,7 +62,7 @@ export function useProjects(): UseProjects {
         return project;
       } catch (err) {
         pushError(
-          `Failed to update project: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to update project: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -76,7 +77,7 @@ export function useProjects(): UseProjects {
         setProjects((prev) => prev.filter((p) => p.id !== id));
       } catch (err) {
         pushError(
-          `Failed to delete project: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to delete project: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -114,7 +115,7 @@ export function useChannelProjects(channelId: number): UseChannelProjects {
       setProjects(data);
     } catch (err) {
       pushError(
-        `Failed to load channel projects: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to load channel projects: ${getErrorMessage(err)}`,
       );
     } finally {
       setLoading(false);
@@ -132,7 +133,7 @@ export function useChannelProjects(channelId: number): UseChannelProjects {
         await refresh();
       } catch (err) {
         pushError(
-          `Failed to add project: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to add project: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -147,7 +148,7 @@ export function useChannelProjects(channelId: number): UseChannelProjects {
         await refresh();
       } catch (err) {
         pushError(
-          `Failed to remove project: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to remove project: ${getErrorMessage(err)}`,
         );
         throw err;
       }

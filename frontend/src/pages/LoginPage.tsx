@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { getErrorMessage } from "../utils/errors";
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -42,8 +43,7 @@ export default function LoginPage({ onLogin, onRegister }: LoginPageProps) {
         await onRegister(username, password, inviteCode || undefined);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      setError(msg);
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

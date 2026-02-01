@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import * as api from "../api";
 import type { AgentStatsResponse, LLMCall, ToolExecution } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 const PAGE_SIZE = 50;
 
@@ -45,7 +46,7 @@ export function useAgentActivity(): UseAgentActivity {
         setHasMoreExecs(execs.length >= PAGE_SIZE);
       } catch (err) {
         pushError(
-          `Failed to load activity: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to load activity: ${getErrorMessage(err)}`,
         );
       } finally {
         setLoading(false);
@@ -65,7 +66,7 @@ export function useAgentActivity(): UseAgentActivity {
         setHasMoreCalls(more.length >= PAGE_SIZE);
       } catch (err) {
         pushError(
-          `Failed to load more calls: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to load more calls: ${getErrorMessage(err)}`,
         );
       }
     },
@@ -83,7 +84,7 @@ export function useAgentActivity(): UseAgentActivity {
         setHasMoreExecs(more.length >= PAGE_SIZE);
       } catch (err) {
         pushError(
-          `Failed to load more executions: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to load more executions: ${getErrorMessage(err)}`,
         );
       }
     },

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../api";
 import { useApp } from "../store/AppContext";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 export function useMessages(channelId: number | null) {
   const { state, setMessages, addMessage, updateReactions } = useApp();
@@ -49,7 +50,7 @@ export function useMessages(channelId: number | null) {
       }
     } catch (err) {
       pushError(
-        `Failed to load older messages: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to load older messages: ${getErrorMessage(err)}`,
       );
     } finally {
       setLoading(false);
@@ -64,7 +65,7 @@ export function useMessages(channelId: number | null) {
         addMessage(msg);
       } catch (err) {
         pushError(
-          `Failed to send message: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to send message: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -82,7 +83,7 @@ export function useMessages(channelId: number | null) {
         updateReactions(channelId, messageId, counts);
       } catch (err) {
         pushError(
-          `Failed to toggle reaction: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to toggle reaction: ${getErrorMessage(err)}`,
         );
       }
     },

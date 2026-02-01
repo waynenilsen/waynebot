@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import * as api from "../api";
 import { useApp } from "../store/AppContext";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 export function useChannels() {
   const { state, setChannels, setCurrentChannel, clearUnread } = useApp();
@@ -32,7 +33,7 @@ export function useChannels() {
         return ch;
       } catch (err) {
         pushError(
-          `Failed to create channel: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to create channel: ${getErrorMessage(err)}`,
         );
         throw err;
       }

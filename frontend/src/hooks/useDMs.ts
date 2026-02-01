@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import * as api from "../api";
 import { useApp } from "../store/AppContext";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 export function useDMs() {
   const { state, setDMs, setCurrentChannel, clearDMUnread } = useApp();
@@ -36,7 +37,7 @@ export function useDMs() {
         return dm;
       } catch (err) {
         pushError(
-          `Failed to create DM: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to create DM: ${getErrorMessage(err)}`,
         );
         throw err;
       }

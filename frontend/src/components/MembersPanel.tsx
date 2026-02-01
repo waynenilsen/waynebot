@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../api";
 import type { ChannelMember, Persona, User } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 interface MembersPanelProps {
   channelId: number;
@@ -26,7 +27,7 @@ export default function MembersPanel({
       setMembers(m);
     } catch (err) {
       pushError(
-        `Failed to load members: ${err instanceof Error ? err.message : "unknown"}`,
+        `Failed to load members: ${getErrorMessage(err)}`,
       );
     }
   }, [channelId, pushError]);
@@ -45,7 +46,7 @@ export default function MembersPanel({
       })
       .catch((err) => {
         pushError(
-          `Failed to load members: ${err instanceof Error ? err.message : "unknown"}`,
+          `Failed to load members: ${getErrorMessage(err)}`,
         );
       })
       .finally(() => setLoading(false));
@@ -63,7 +64,7 @@ export default function MembersPanel({
         setShowAdd(false);
       } catch (err) {
         pushError(
-          `Failed to add member: ${err instanceof Error ? err.message : "unknown"}`,
+          `Failed to add member: ${getErrorMessage(err)}`,
         );
       }
     },
@@ -80,7 +81,7 @@ export default function MembersPanel({
         await refresh();
       } catch (err) {
         pushError(
-          `Failed to remove member: ${err instanceof Error ? err.message : "unknown"}`,
+          `Failed to remove member: ${getErrorMessage(err)}`,
         );
       }
     },

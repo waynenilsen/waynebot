@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../api";
 import type { Project } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 interface ProjectsPanelProps {
   channelId: number;
@@ -25,7 +26,7 @@ export default function ProjectsPanel({
       setChannelProjects(cp);
     } catch (err) {
       pushError(
-        `Failed to load projects: ${err instanceof Error ? err.message : "unknown"}`,
+        `Failed to load projects: ${getErrorMessage(err)}`,
       );
     }
   }, [channelId, pushError]);
@@ -39,7 +40,7 @@ export default function ProjectsPanel({
       })
       .catch((err) => {
         pushError(
-          `Failed to load projects: ${err instanceof Error ? err.message : "unknown"}`,
+          `Failed to load projects: ${getErrorMessage(err)}`,
         );
       })
       .finally(() => setLoading(false));
@@ -54,7 +55,7 @@ export default function ProjectsPanel({
         setShowAdd(false);
       } catch (err) {
         pushError(
-          `Failed to add project: ${err instanceof Error ? err.message : "unknown"}`,
+          `Failed to add project: ${getErrorMessage(err)}`,
         );
       }
     },
@@ -68,7 +69,7 @@ export default function ProjectsPanel({
         await refresh();
       } catch (err) {
         pushError(
-          `Failed to remove project: ${err instanceof Error ? err.message : "unknown"}`,
+          `Failed to remove project: ${getErrorMessage(err)}`,
         );
       }
     },

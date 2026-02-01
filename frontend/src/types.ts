@@ -34,7 +34,7 @@ export interface ReactionEvent {
   channel_id: number;
   emoji: string;
   author_id: number;
-  author_type: string;
+  author_type: "human" | "agent";
   counts: ReactionCount[];
 }
 

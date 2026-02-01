@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { Persona } from "../types";
+import { getErrorMessage } from "../utils/errors";
+import { inputClass, labelClass } from "../utils/styles";
 
 type PersonaData = Omit<Persona, "id" | "created_at">;
 
@@ -10,11 +12,6 @@ interface PersonaFormProps {
   onCancel: () => void;
 }
 
-const inputClass =
-  "w-full bg-[#0f3460]/50 border border-[#e2b714]/10 rounded px-3 py-2.5 text-white text-sm placeholder-[#a0a0b8]/40 focus:outline-none focus:border-[#e2b714]/40 focus:ring-1 focus:ring-[#e2b714]/20 transition-colors font-mono";
-
-const labelClass =
-  "block text-[#a0a0b8] text-xs font-medium uppercase tracking-wider mb-1.5";
 
 export default function PersonaForm({
   initial,
@@ -64,8 +61,7 @@ export default function PersonaForm({
         tools_enabled: toolsEnabled,
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      setError(msg);
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

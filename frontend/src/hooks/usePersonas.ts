@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../api";
 import type { Persona } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 type PersonaData = Omit<Persona, "id" | "created_at">;
 
@@ -26,7 +27,7 @@ export function usePersonas(): UsePersonas {
       setPersonas(data);
     } catch (err) {
       pushError(
-        `Failed to load personas: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to load personas: ${getErrorMessage(err)}`,
       );
     } finally {
       setLoading(false);
@@ -45,7 +46,7 @@ export function usePersonas(): UsePersonas {
         return persona;
       } catch (err) {
         pushError(
-          `Failed to create persona: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to create persona: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -61,7 +62,7 @@ export function usePersonas(): UsePersonas {
         return persona;
       } catch (err) {
         pushError(
-          `Failed to update persona: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to update persona: ${getErrorMessage(err)}`,
         );
         throw err;
       }
@@ -76,7 +77,7 @@ export function usePersonas(): UsePersonas {
         setPersonas((prev) => prev.filter((p) => p.id !== id));
       } catch (err) {
         pushError(
-          `Failed to delete persona: ${err instanceof Error ? err.message : "unknown error"}`,
+          `Failed to delete persona: ${getErrorMessage(err)}`,
         );
         throw err;
       }

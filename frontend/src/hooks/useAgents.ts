@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import * as api from "../api";
 import type { AgentStatus } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 interface UseAgents {
   agents: AgentStatus[];
@@ -26,7 +27,7 @@ export function useAgents(): UseAgents {
       setSupervisorRunning(data.supervisor_running);
     } catch (err) {
       pushError(
-        `Failed to load agents: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to load agents: ${getErrorMessage(err)}`,
       );
     } finally {
       setLoading(false);
@@ -39,7 +40,7 @@ export function useAgents(): UseAgents {
       await refresh();
     } catch (err) {
       pushError(
-        `Failed to start agents: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to start agents: ${getErrorMessage(err)}`,
       );
     }
   }, [refresh, pushError]);
@@ -50,7 +51,7 @@ export function useAgents(): UseAgents {
       await refresh();
     } catch (err) {
       pushError(
-        `Failed to stop agents: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to stop agents: ${getErrorMessage(err)}`,
       );
     }
   }, [refresh, pushError]);

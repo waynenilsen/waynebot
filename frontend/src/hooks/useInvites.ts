@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../api";
 import type { Invite } from "../types";
 import { useErrors } from "../store/ErrorContext";
+import { getErrorMessage } from "../utils/errors";
 
 interface UseInvites {
   invites: Invite[];
@@ -22,7 +23,7 @@ export function useInvites(): UseInvites {
       setInvites(data);
     } catch (err) {
       pushError(
-        `Failed to load invites: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to load invites: ${getErrorMessage(err)}`,
       );
     } finally {
       setLoading(false);
@@ -40,7 +41,7 @@ export function useInvites(): UseInvites {
       return invite;
     } catch (err) {
       pushError(
-        `Failed to generate invite: ${err instanceof Error ? err.message : "unknown error"}`,
+        `Failed to generate invite: ${getErrorMessage(err)}`,
       );
       throw err;
     }

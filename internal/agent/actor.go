@@ -266,7 +266,16 @@ func (a *Actor) postMessage(ch model.Channel, content string) {
 
 	a.Hub.Broadcast(ws.Event{
 		Type: "new_message",
-		Data: msg,
+		Data: map[string]any{
+			"id":          msg.ID,
+			"channel_id":  msg.ChannelID,
+			"author_id":   msg.AuthorID,
+			"author_type": msg.AuthorType,
+			"author_name": msg.AuthorName,
+			"content":     msg.Content,
+			"created_at":  msg.CreatedAt.Format(time.RFC3339),
+			"reactions":   []any{},
+		},
 	})
 }
 

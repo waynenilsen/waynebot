@@ -125,6 +125,12 @@ export interface AgentStatsResponse {
   avg_response_ms: number;
 }
 
+export interface MentionTarget {
+  type: "user" | "persona";
+  id: number;
+  name: string;
+}
+
 export interface ChannelMember {
   type: "user" | "persona";
   id: number;

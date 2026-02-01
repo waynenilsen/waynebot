@@ -1,7 +1,56 @@
+import { type ReactNode } from "react";
 import Markdown from "react-markdown";
 
 interface MarkdownRendererProps {
   content: string;
+}
+
+const MENTION_RE = /(^|\s)(@[a-zA-Z0-9_]+)/g;
+
+/** Walks children and highlights @mentions within text nodes. */
+function highlightMentions(children: ReactNode): ReactNode {
+  if (typeof children === "string") {
+    const parts: ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    MENTION_RE.lastIndex = 0;
+
+    while ((match = MENTION_RE.exec(children)) !== null) {
+      const prefix = match[1]; // whitespace or empty before the @
+      const mention = match[2]; // @username
+      const start = match.index + prefix.length;
+
+      if (start > lastIndex) {
+        parts.push(children.slice(lastIndex, start));
+      }
+      parts.push(
+        <span
+          key={start}
+          className="text-[#e2b714] font-bold bg-[#e2b714]/10 rounded px-0.5"
+        >
+          {mention}
+        </span>,
+      );
+      lastIndex = start + mention.length;
+    }
+
+    if (parts.length === 0) return children;
+    if (lastIndex < children.length) {
+      parts.push(children.slice(lastIndex));
+    }
+    return <>{parts}</>;
+  }
+
+  if (Array.isArray(children)) {
+    return children.map((child, i) => {
+      if (typeof child === "string") {
+        return <span key={i}>{highlightMentions(child)}</span>;
+      }
+      return child;
+    });
+  }
+
+  return children;
 }
 
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
@@ -52,8 +101,11 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
             </ol>
           ),
           p: ({ children }) => (
-            <p className="my-1 first:mt-0 last:mb-0">{children}</p>
+            <p className="my-1 first:mt-0 last:mb-0">
+              {highlightMentions(children)}
+            </p>
           ),
+          li: ({ children }) => <li>{highlightMentions(children)}</li>,
         }}
       >
         {content}

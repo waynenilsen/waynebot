@@ -8,6 +8,7 @@ import type {
   ReactionCount,
   Invite,
   LLMCall,
+  MentionTarget,
   Message,
   Persona,
   Project,
@@ -338,6 +339,10 @@ export async function removeChannelProject(
   return apiFetch<void>(`/api/channels/${channelId}/projects/${projectId}`, {
     method: "DELETE",
   });
+}
+
+export async function getMentionTargets(): Promise<MentionTarget[]> {
+  return apiFetch<MentionTarget[]>("/api/mention-targets");
 }
 
 export { ApiError };

@@ -39,15 +39,15 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 	})
 
 	ah := &AuthHandler{DB: database}
-	ch := &ChannelHandler{DB: database, Hub: hub}
-	ph := &PersonaHandler{DB: database}
-	ih := &InviteHandler{DB: database}
-	wh := &WsHandler{DB: database, Hub: hub}
-
 	var sup *agent.Supervisor
 	if len(supervisor) > 0 {
 		sup = supervisor[0]
 	}
+	ch := &ChannelHandler{DB: database, Hub: hub, Supervisor: sup}
+	ph := &PersonaHandler{DB: database}
+	ih := &InviteHandler{DB: database}
+	wh := &WsHandler{DB: database, Hub: hub}
+
 	dh := &DMHandler{DB: database, Hub: hub, Supervisor: sup}
 	mh := &MemberHandler{DB: database, Supervisor: sup}
 	uh := &UserHandler{DB: database}
@@ -92,6 +92,9 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 		r.With(auth.RequireAuth).Get("/invites", ih.ListInvites)
 
 		r.With(auth.RequireAuth).Get("/users", uh.ListUsers)
+
+		mtnh := &MentionHandler{DB: database}
+		r.With(auth.RequireAuth).Get("/mention-targets", mtnh.ListMentionTargets)
 
 		r.With(auth.RequireAuth).Get("/dms", dh.ListDMs)
 		r.With(auth.RequireAuth).Post("/dms", dh.CreateDM)

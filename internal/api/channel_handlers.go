@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
 	"github.com/waynenilsen/waynebot/internal/ws"
@@ -16,8 +18,9 @@ import (
 
 // ChannelHandler handles channel and message HTTP endpoints.
 type ChannelHandler struct {
-	DB  *db.DB
-	Hub *ws.Hub
+	DB         *db.DB
+	Hub        *ws.Hub
+	Supervisor *agent.Supervisor
 }
 
 type createChannelRequest struct {
@@ -283,6 +286,9 @@ func (h *ChannelHandler) PostMessage(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Auto-subscribe mentioned personas that aren't already in this channel.
+	h.autoSubscribeMentionedPersonas(channelID, req.Content)
+
 	WriteJSON(w, http.StatusCreated, toMessageJSON(msg))
 }
 
@@ -307,4 +313,52 @@ func (h *ChannelHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]int64{"last_read_message_id": latestID})
+}
+
+// autoSubscribeMentionedPersonas parses @mentions from content and subscribes
+// any mentioned personas that aren't already subscribed to the channel.
+func (h *ChannelHandler) autoSubscribeMentionedPersonas(channelID int64, content string) {
+	personas, err := model.ListPersonas(h.DB)
+	if err != nil {
+		slog.Error("channel: list personas for mention check", "error", err)
+		return
+	}
+
+	lower := strings.ToLower(content)
+	for _, p := range personas {
+		mention := "@" + strings.ToLower(p.Name)
+		if !strings.Contains(lower, mention) {
+			continue
+		}
+
+		// Check if already subscribed.
+		channels, err := model.GetSubscribedChannels(h.DB, p.ID)
+		if err != nil {
+			slog.Error("channel: get subscribed channels", "persona", p.Name, "error", err)
+			continue
+		}
+		alreadySubscribed := false
+		for _, ch := range channels {
+			if ch.ID == channelID {
+				alreadySubscribed = true
+				break
+			}
+		}
+		if alreadySubscribed {
+			continue
+		}
+
+		if err := model.SubscribeChannel(h.DB, p.ID, channelID); err != nil {
+			slog.Error("channel: auto-subscribe persona on mention", "persona", p.Name, "channel_id", channelID, "error", err)
+			continue
+		}
+		slog.Info("channel: auto-subscribed persona via @mention", "persona", p.Name, "channel_id", channelID)
+
+		// Restart actor so it picks up the new subscription.
+		if h.Supervisor != nil && h.Supervisor.Running() {
+			if err := h.Supervisor.RestartActor(p.ID); err != nil {
+				slog.Error("channel: restart actor after mention subscribe", "persona", p.Name, "error", err)
+			}
+		}
+	}
 }

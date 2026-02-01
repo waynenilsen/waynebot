@@ -4,6 +4,7 @@ import { useChannels } from "./hooks/useChannels";
 import { useDMs } from "./hooks/useDMs";
 import { useMessages } from "./hooks/useMessages";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { useMentionTargets } from "./hooks/useMentionTargets";
 import LoginPage from "./pages/LoginPage";
 import PersonaPage from "./pages/PersonaPage";
 import AgentDashboard from "./pages/AgentDashboard";
@@ -38,6 +39,7 @@ function AuthenticatedApp({
   const { messages, loading, hasMore, loadMore, sendMessage, toggleReaction } =
     useMessages(currentChannelId);
   const { connected, wasConnected } = useWebSocket(true);
+  const { targets: mentionTargets } = useMentionTargets();
   const [currentView, setCurrentView] = useState("channels");
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -177,7 +179,11 @@ function AuthenticatedApp({
                 isDM
                 onReactionToggle={toggleReaction}
               />
-              <MessageCompose onSend={sendMessage} composeRef={composeRef} />
+              <MessageCompose
+                onSend={sendMessage}
+                composeRef={composeRef}
+                mentionTargets={mentionTargets}
+              />
             </>
           ) : currentView === "channels" && currentChannel ? (
             <div className="flex-1 flex min-h-0">
@@ -192,7 +198,11 @@ function AuthenticatedApp({
                   onToggleMembers={() => setShowMembers((p) => !p)}
                   onToggleProjects={() => setShowProjects((p) => !p)}
                 />
-                <MessageCompose onSend={sendMessage} composeRef={composeRef} />
+                <MessageCompose
+                  onSend={sendMessage}
+                  composeRef={composeRef}
+                  mentionTargets={mentionTargets}
+                />
               </div>
               {showMembers && currentChannelId && (
                 <MembersPanel

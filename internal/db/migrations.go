@@ -206,6 +206,18 @@ WHERE c.is_dm = 0
   );
 `,
 	},
+	{
+		Version: 8,
+		SQL: `
+CREATE TABLE projects (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    path        TEXT NOT NULL UNIQUE,
+    description TEXT NOT NULL DEFAULT '',
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

@@ -15,6 +15,7 @@ interface MessageThreadProps {
     reacted: boolean,
   ) => void;
   onToggleMembers?: () => void;
+  onToggleProjects?: () => void;
 }
 
 export default function MessageThread({
@@ -26,6 +27,7 @@ export default function MessageThread({
   isDM,
   onReactionToggle,
   onToggleMembers,
+  onToggleProjects,
 }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -71,14 +73,27 @@ export default function MessageThread({
           <span className="text-[#e2b714]/50">{isDM ? "●" : "#"}</span>
           {channelName}
         </h2>
-        {!isDM && onToggleMembers && (
-          <button
-            onClick={onToggleMembers}
-            className="text-[#a0a0b8]/40 hover:text-[#e2b714] text-xs font-mono transition-colors px-2 py-1 rounded hover:bg-[#0f3460]/30"
-            title="members"
-          >
-            members
-          </button>
+        {!isDM && (
+          <div className="flex items-center gap-1">
+            {onToggleProjects && (
+              <button
+                onClick={onToggleProjects}
+                className="text-[#a0a0b8]/40 hover:text-[#e2b714] text-xs font-mono transition-colors px-2 py-1 rounded hover:bg-[#0f3460]/30"
+                title="projects"
+              >
+                projects
+              </button>
+            )}
+            {onToggleMembers && (
+              <button
+                onClick={onToggleMembers}
+                className="text-[#a0a0b8]/40 hover:text-[#e2b714] text-xs font-mono transition-colors px-2 py-1 rounded hover:bg-[#0f3460]/30"
+                title="members"
+              >
+                members
+              </button>
+            )}
+          </div>
         )}
       </div>
 

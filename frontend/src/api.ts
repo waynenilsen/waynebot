@@ -10,6 +10,7 @@ import type {
   LLMCall,
   Message,
   Persona,
+  Project,
   ToolExecution,
   User,
 } from "./types";
@@ -282,6 +283,60 @@ export async function removeChannelMember(
   return apiFetch<void>(`/api/channels/${channelId}/members`, {
     method: "DELETE",
     body: JSON.stringify(opts),
+  });
+}
+
+// Projects
+
+export async function getProjects(): Promise<Project[]> {
+  return apiFetch<Project[]>("/api/projects");
+}
+
+export async function createProject(
+  data: Omit<Project, "id" | "created_at">,
+): Promise<Project> {
+  return apiFetch<Project>("/api/projects", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateProject(
+  id: number,
+  data: Omit<Project, "id" | "created_at">,
+): Promise<Project> {
+  return apiFetch<Project>(`/api/projects/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteProject(id: number): Promise<void> {
+  return apiFetch<void>(`/api/projects/${id}`, { method: "DELETE" });
+}
+
+export async function getChannelProjects(
+  channelId: number,
+): Promise<Project[]> {
+  return apiFetch<Project[]>(`/api/channels/${channelId}/projects`);
+}
+
+export async function addChannelProject(
+  channelId: number,
+  projectId: number,
+): Promise<void> {
+  return apiFetch<void>(`/api/channels/${channelId}/projects`, {
+    method: "POST",
+    body: JSON.stringify({ project_id: projectId }),
+  });
+}
+
+export async function removeChannelProject(
+  channelId: number,
+  projectId: number,
+): Promise<void> {
+  return apiFetch<void>(`/api/channels/${channelId}/projects/${projectId}`, {
+    method: "DELETE",
   });
 }
 

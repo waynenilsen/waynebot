@@ -8,6 +8,8 @@ import LoginPage from "./pages/LoginPage";
 import PersonaPage from "./pages/PersonaPage";
 import AgentDashboard from "./pages/AgentDashboard";
 import InvitePage from "./pages/InvitePage";
+import ProjectsPage from "./pages/ProjectsPage";
+import ProjectsPanel from "./components/ProjectsPanel";
 import Layout from "./components/Layout";
 import Sidebar from "./components/Sidebar";
 import ChannelList from "./components/ChannelList";
@@ -39,6 +41,7 @@ function AuthenticatedApp({
   const [currentView, setCurrentView] = useState("channels");
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [showConnectedFlash, setShowConnectedFlash] = useState(false);
   const composeRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,6 +55,8 @@ function AuthenticatedApp({
       document.title = "Personas - waynebot";
     } else if (currentView === "agents") {
       document.title = "Agents - waynebot";
+    } else if (currentView === "projects") {
+      document.title = "Projects - waynebot";
     } else if (currentView === "invites") {
       document.title = "Invites - waynebot";
     } else {
@@ -68,9 +73,10 @@ function AuthenticatedApp({
     }
   }, [connected, wasConnected]);
 
-  // Close members panel when switching channels
+  // Close side panels when switching channels
   useEffect(() => {
     setShowMembers(false);
+    setShowProjects(false);
   }, [currentChannelId]);
 
   // Focus compose box when switching channels
@@ -184,6 +190,7 @@ function AuthenticatedApp({
                   channelName={currentChannel.name}
                   onReactionToggle={toggleReaction}
                   onToggleMembers={() => setShowMembers((p) => !p)}
+                  onToggleProjects={() => setShowProjects((p) => !p)}
                 />
                 <MessageCompose onSend={sendMessage} composeRef={composeRef} />
               </div>
@@ -191,6 +198,12 @@ function AuthenticatedApp({
                 <MembersPanel
                   channelId={currentChannelId}
                   onClose={() => setShowMembers(false)}
+                />
+              )}
+              {showProjects && currentChannelId && (
+                <ProjectsPanel
+                  channelId={currentChannelId}
+                  onClose={() => setShowProjects(false)}
                 />
               )}
             </div>
@@ -216,6 +229,8 @@ function AuthenticatedApp({
             <PersonaPage />
           ) : currentView === "agents" ? (
             <AgentDashboard />
+          ) : currentView === "projects" ? (
+            <ProjectsPage />
           ) : currentView === "invites" ? (
             <InvitePage />
           ) : null}

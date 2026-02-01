@@ -13,6 +13,7 @@ interface SidebarProps {
 const navItems = [
   { key: "personas", label: "Personas", icon: "\u25C6" },
   { key: "agents", label: "Agents", icon: "\u25B8" },
+  { key: "projects", label: "Projects", icon: "\u25A0" },
   { key: "invites", label: "Invites", icon: "\u2709" },
 ];
 

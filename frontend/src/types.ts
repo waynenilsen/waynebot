@@ -131,3 +131,11 @@ export interface ChannelMember {
   name: string;
   role: string;
 }
+
+export interface Project {
+  id: number;
+  name: string;
+  path: string;
+  description: string;
+  created_at: string;
+}

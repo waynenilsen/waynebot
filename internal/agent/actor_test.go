@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,12 +17,13 @@ import (
 
 // mockLLM implements LLMClient for tests.
 type mockLLM struct {
-	mu        sync.Mutex
-	responses []llm.Response
-	calls     int
+	mu           sync.Mutex
+	responses    []llm.Response
+	calls        int
+	lastMessages []openai.ChatCompletionMessageParamUnion
 }
 
-func (m *mockLLM) ChatCompletion(_ context.Context, _ string, _ []openai.ChatCompletionMessageParamUnion, _ []openai.ChatCompletionToolParam, _ float64, _ int) (llm.Response, error) {
+func (m *mockLLM) ChatCompletion(_ context.Context, _ string, msgs []openai.ChatCompletionMessageParamUnion, _ []openai.ChatCompletionToolParam, _ float64, _ int) (llm.Response, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	idx := m.calls
@@ -29,6 +31,7 @@ func (m *mockLLM) ChatCompletion(_ context.Context, _ string, _ []openai.ChatCom
 		idx = len(m.responses) - 1
 	}
 	m.calls++
+	m.lastMessages = msgs
 	return m.responses[idx], nil
 }
 
@@ -36,6 +39,12 @@ func (m *mockLLM) callCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.calls
+}
+
+func (m *mockLLM) getLastMessages() []openai.ChatCompletionMessageParamUnion {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.lastMessages
 }
 
 // scenario sets up the common test fixtures for actor tests.
@@ -296,5 +305,105 @@ func TestActorCursorUpdatedEvenWhenSkipped(t *testing.T) {
 	cursor, _ := s.actor.Cursors.Get(s.persona.ID, s.channel.ID)
 	if cursor != msg.ID {
 		t.Errorf("expected cursor = %d, got %d", msg.ID, cursor)
+	}
+}
+
+func TestActorProjectAwarenessEnrichesSystemPrompt(t *testing.T) {
+	s := newScenario(t)
+
+	// Create a project and associate it with the channel.
+	projectDir := t.TempDir()
+	proj, err := model.CreateProject(s.actor.DB, "myproject", projectDir, "A test project")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	if err := model.SetChannelProject(s.actor.DB, s.channel.ID, proj.ID); err != nil {
+		t.Fatalf("set channel project: %v", err)
+	}
+
+	s.postHumanMessage("Hi bot")
+	s.runOnce(context.Background())
+
+	if s.mock.callCount() != 1 {
+		t.Fatalf("expected 1 LLM call, got %d", s.mock.callCount())
+	}
+
+	// Verify the system prompt was enriched with project info.
+	msgs := s.mock.getLastMessages()
+	if len(msgs) == 0 {
+		t.Fatal("expected messages to be sent to LLM")
+	}
+	sysMsg := msgs[0]
+	if sysMsg.OfSystem == nil {
+		t.Fatal("expected first message to be system message")
+	}
+	content := sysMsg.OfSystem.Content.OfString.Value
+	if !strings.Contains(content, "myproject") {
+		t.Errorf("expected system prompt to contain project name, got: %s", content)
+	}
+	if !strings.Contains(content, "A test project") {
+		t.Errorf("expected system prompt to contain project description, got: %s", content)
+	}
+}
+
+func TestActorProjectAwarenessPassesProjectDirToTools(t *testing.T) {
+	s := newScenario(t)
+
+	// Create a project and associate it with the channel.
+	projectDir := t.TempDir()
+	proj, err := model.CreateProject(s.actor.DB, "toolproject", projectDir, "")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	if err := model.SetChannelProject(s.actor.DB, s.channel.ID, proj.ID); err != nil {
+		t.Fatalf("set channel project: %v", err)
+	}
+
+	// Register a tool that captures the project dir from context.
+	var capturedDir string
+	s.actor.Tools.Register("check_context", func(ctx context.Context, _ json.RawMessage) (string, error) {
+		capturedDir = tools.ProjectDirFromContext(ctx)
+		return "ok", nil
+	})
+
+	s.mock.responses = []llm.Response{
+		{
+			ToolCalls:    []llm.ToolCall{{ID: "call_ctx", Name: "check_context", Arguments: `{}`}},
+			PromptTokens: 10, CompletionTokens: 5,
+		},
+		{Content: "Done!", PromptTokens: 15, CompletionTokens: 8},
+	}
+
+	s.postHumanMessage("Check context")
+	s.runOnce(context.Background())
+
+	if capturedDir != projectDir {
+		t.Errorf("expected project dir %q, got %q", projectDir, capturedDir)
+	}
+}
+
+func TestActorNoProjectFallsBack(t *testing.T) {
+	s := newScenario(t)
+
+	// No project associated — tool context should have empty project dir.
+	var capturedDir string
+	s.actor.Tools.Register("check_context", func(ctx context.Context, _ json.RawMessage) (string, error) {
+		capturedDir = tools.ProjectDirFromContext(ctx)
+		return "ok", nil
+	})
+
+	s.mock.responses = []llm.Response{
+		{
+			ToolCalls:    []llm.ToolCall{{ID: "call_ctx", Name: "check_context", Arguments: `{}`}},
+			PromptTokens: 10, CompletionTokens: 5,
+		},
+		{Content: "Done!", PromptTokens: 15, CompletionTokens: 8},
+	}
+
+	s.postHumanMessage("Check context")
+	s.runOnce(context.Background())
+
+	if capturedDir != "" {
+		t.Errorf("expected empty project dir, got %q", capturedDir)
 	}
 }

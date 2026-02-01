@@ -46,6 +46,9 @@ func ShellExec(cfg *SandboxConfig) ToolFunc {
 
 		cmd := exec.CommandContext(ctx, args.Command, args.Args...)
 		cmd.Dir = cfg.BaseDir
+		if dir := ProjectDirFromContext(ctx); dir != "" {
+			cmd.Dir = dir
+		}
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout

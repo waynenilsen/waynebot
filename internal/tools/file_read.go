@@ -18,7 +18,7 @@ type fileReadArgs struct {
 // FileRead returns a ToolFunc that reads files restricted to the sandbox base
 // directory. Path traversal is rejected and files larger than 1MB are refused.
 func FileRead(cfg *SandboxConfig) ToolFunc {
-	return func(_ context.Context, raw json.RawMessage) (string, error) {
+	return func(ctx context.Context, raw json.RawMessage) (string, error) {
 		var args fileReadArgs
 		if err := json.Unmarshal(raw, &args); err != nil {
 			return "", fmt.Errorf("invalid args: %w", err)
@@ -27,7 +27,12 @@ func FileRead(cfg *SandboxConfig) ToolFunc {
 			return "", fmt.Errorf("path is required")
 		}
 
-		resolved, err := securePath(cfg.BaseDir, args.Path)
+		baseDir := cfg.BaseDir
+		if dir := ProjectDirFromContext(ctx); dir != "" {
+			baseDir = dir
+		}
+
+		resolved, err := securePath(baseDir, args.Path)
 		if err != nil {
 			return "", err
 		}

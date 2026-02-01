@@ -133,7 +133,18 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 	// GetRecentMessages returns newest-first; reverse for chronological order.
 	reverseMessages(history)
 
-	messages := llm.BuildMessages(a.Persona, history)
+	// Look up associated projects for system prompt enrichment and tool scoping.
+	projects, err := model.ListChannelProjects(a.DB, ch.ID)
+	if err != nil {
+		slog.Error("actor: list channel projects", "persona", a.Persona.Name, "channel_id", ch.ID, "error", err)
+	}
+
+	persona := a.Persona
+	if len(projects) > 0 {
+		persona = enrichPersonaPrompt(persona, projects)
+	}
+
+	messages := llm.BuildMessages(persona, history)
 	toolDefs := llm.ToolsForPersona(a.Persona.ToolsEnabled)
 
 	for round := 0; round < maxToolRounds; round++ {
@@ -160,7 +171,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 
 		// Process tool calls.
 		a.Status.Set(a.Persona.ID, StatusToolCall)
-		messages = a.executeToolCalls(messages, resp)
+		messages = a.executeToolCalls(messages, resp, projects)
 	}
 
 	slog.Warn("actor: hit max tool rounds", "persona", a.Persona.Name, "max_rounds", maxToolRounds, "channel_id", ch.ID)
@@ -168,7 +179,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 
 // executeToolCalls runs each tool call, appends assistant + tool result messages for the
 // next LLM round, and returns the updated messages slice.
-func (a *Actor) executeToolCalls(messages []openai.ChatCompletionMessageParamUnion, resp llm.Response) []openai.ChatCompletionMessageParamUnion {
+func (a *Actor) executeToolCalls(messages []openai.ChatCompletionMessageParamUnion, resp llm.Response, projects []model.Project) []openai.ChatCompletionMessageParamUnion {
 	// Build assistant message containing the tool calls.
 	toolCalls := make([]openai.ChatCompletionMessageToolCallParam, len(resp.ToolCalls))
 	for i, tc := range resp.ToolCalls {
@@ -190,6 +201,9 @@ func (a *Actor) executeToolCalls(messages []openai.ChatCompletionMessageParamUni
 	for _, tc := range resp.ToolCalls {
 		start := time.Now()
 		toolCtx := tools.WithPersonaID(context.Background(), a.Persona.ID)
+		if len(projects) > 0 {
+			toolCtx = tools.WithProjectDir(toolCtx, projects[0].Path)
+		}
 		result, err := a.Tools.Call(toolCtx, tc.Name, json.RawMessage(tc.Arguments))
 		duration := time.Since(start)
 
@@ -287,6 +301,19 @@ func (a *Actor) recordToolExecution(toolName, argsJSON, output, errText string, 
 			"created_at":  time.Now().UTC().Format(time.RFC3339),
 		},
 	})
+}
+
+// enrichPersonaPrompt returns a copy of the persona with project information appended
+// to the system prompt so the agent knows about the associated project(s).
+func enrichPersonaPrompt(p model.Persona, projects []model.Project) model.Persona {
+	enriched := p
+	enriched.SystemPrompt += "\n\n## Project Context\n"
+	enriched.SystemPrompt += fmt.Sprintf("This channel is associated with the project **%s**.", projects[0].Name)
+	if projects[0].Description != "" {
+		enriched.SystemPrompt += "\nDescription: " + projects[0].Description
+	}
+	enriched.SystemPrompt += "\nFile tools (file_read, file_write, shell_exec) are scoped to the project directory."
+	return enriched
 }
 
 // reverseMessages reverses a slice of messages in place.

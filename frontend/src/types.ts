@@ -124,3 +124,10 @@ export interface AgentStatsResponse {
   error_count_last_hour: number;
   avg_response_ms: number;
 }
+
+export interface ChannelMember {
+  type: "user" | "persona";
+  id: number;
+  name: string;
+  role: string;
+}

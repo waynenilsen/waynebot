@@ -14,6 +14,7 @@ interface MessageThreadProps {
     emoji: string,
     reacted: boolean,
   ) => void;
+  onToggleMembers?: () => void;
 }
 
 export default function MessageThread({
@@ -24,6 +25,7 @@ export default function MessageThread({
   channelName,
   isDM,
   onReactionToggle,
+  onToggleMembers,
 }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -64,11 +66,20 @@ export default function MessageThread({
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Channel header */}
-      <div className="shrink-0 px-4 py-3 border-b border-[#e2b714]/10 bg-[#1a1a2e]">
+      <div className="shrink-0 px-4 py-3 border-b border-[#e2b714]/10 bg-[#1a1a2e] flex items-center justify-between">
         <h2 className="text-white text-sm font-bold font-mono flex items-center gap-2">
           <span className="text-[#e2b714]/50">{isDM ? "●" : "#"}</span>
           {channelName}
         </h2>
+        {!isDM && onToggleMembers && (
+          <button
+            onClick={onToggleMembers}
+            className="text-[#a0a0b8]/40 hover:text-[#e2b714] text-xs font-mono transition-colors px-2 py-1 rounded hover:bg-[#0f3460]/30"
+            title="members"
+          >
+            members
+          </button>
+        )}
       </div>
 
       {/* Message list */}

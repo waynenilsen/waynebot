@@ -2,18 +2,21 @@ package api
 
 import (
 	"database/sql"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/waynenilsen/waynebot/internal/agent"
 	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
 )
 
 // MemberHandler handles channel membership endpoints.
 type MemberHandler struct {
-	DB *db.DB
+	DB         *db.DB
+	Supervisor *agent.Supervisor
 }
 
 type memberJSON struct {
@@ -116,6 +119,12 @@ func (h *MemberHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 		if err := model.SubscribeChannel(h.DB, *req.PersonaID, channelID); err != nil {
 			ErrorResponse(w, http.StatusInternalServerError, "internal error")
 			return
+		}
+		// Restart the actor so it picks up the new channel subscription.
+		if h.Supervisor != nil && h.Supervisor.Running() {
+			if err := h.Supervisor.RestartActor(*req.PersonaID); err != nil {
+				slog.Error("member: failed to restart actor", "persona_id", *req.PersonaID, "err", err)
+			}
 		}
 		w.WriteHeader(http.StatusCreated)
 		return

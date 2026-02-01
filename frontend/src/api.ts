@@ -3,6 +3,7 @@ import type {
   AgentStatusResponse,
   AuthResponse,
   Channel,
+  ChannelMember,
   DMChannel,
   ReactionCount,
   Invite,
@@ -250,6 +251,36 @@ export async function createDM(opts: {
 }): Promise<DMChannel> {
   return apiFetch<DMChannel>("/api/dms", {
     method: "POST",
+    body: JSON.stringify(opts),
+  });
+}
+
+export async function getUsers(): Promise<User[]> {
+  return apiFetch<User[]>("/api/users");
+}
+
+export async function getChannelMembers(
+  channelId: number,
+): Promise<ChannelMember[]> {
+  return apiFetch<ChannelMember[]>(`/api/channels/${channelId}/members`);
+}
+
+export async function addChannelMember(
+  channelId: number,
+  opts: { user_id?: number; persona_id?: number },
+): Promise<void> {
+  return apiFetch<void>(`/api/channels/${channelId}/members`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+  });
+}
+
+export async function removeChannelMember(
+  channelId: number,
+  opts: { user_id?: number; persona_id?: number },
+): Promise<void> {
+  return apiFetch<void>(`/api/channels/${channelId}/members`, {
+    method: "DELETE",
     body: JSON.stringify(opts),
   });
 }

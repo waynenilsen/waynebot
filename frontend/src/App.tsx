@@ -16,6 +16,7 @@ import { dmDisplayName } from "./components/DMList";
 import MessageThread from "./components/MessageThread";
 import MessageCompose from "./components/MessageCompose";
 import ChannelSwitcher from "./components/ChannelSwitcher";
+import MembersPanel from "./components/MembersPanel";
 
 function AuthenticatedApp({
   user,
@@ -37,6 +38,7 @@ function AuthenticatedApp({
   const { connected, wasConnected } = useWebSocket(true);
   const [currentView, setCurrentView] = useState("channels");
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
   const [showConnectedFlash, setShowConnectedFlash] = useState(false);
   const composeRef = useRef<HTMLTextAreaElement>(null);
 
@@ -65,6 +67,11 @@ function AuthenticatedApp({
       return () => clearTimeout(t);
     }
   }, [connected, wasConnected]);
+
+  // Close members panel when switching channels
+  useEffect(() => {
+    setShowMembers(false);
+  }, [currentChannelId]);
 
   // Focus compose box when switching channels
   useEffect(() => {
@@ -167,17 +174,26 @@ function AuthenticatedApp({
               <MessageCompose onSend={sendMessage} composeRef={composeRef} />
             </>
           ) : currentView === "channels" && currentChannel ? (
-            <>
-              <MessageThread
-                messages={messages}
-                loading={loading}
-                hasMore={hasMore}
-                onLoadMore={loadMore}
-                channelName={currentChannel.name}
-                onReactionToggle={toggleReaction}
-              />
-              <MessageCompose onSend={sendMessage} composeRef={composeRef} />
-            </>
+            <div className="flex-1 flex min-h-0">
+              <div className="flex-1 flex flex-col min-h-0">
+                <MessageThread
+                  messages={messages}
+                  loading={loading}
+                  hasMore={hasMore}
+                  onLoadMore={loadMore}
+                  channelName={currentChannel.name}
+                  onReactionToggle={toggleReaction}
+                  onToggleMembers={() => setShowMembers((p) => !p)}
+                />
+                <MessageCompose onSend={sendMessage} composeRef={composeRef} />
+              </div>
+              {showMembers && currentChannelId && (
+                <MembersPanel
+                  channelId={currentChannelId}
+                  onClose={() => setShowMembers(false)}
+                />
+              )}
+            </div>
           ) : currentView === "channels" ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">

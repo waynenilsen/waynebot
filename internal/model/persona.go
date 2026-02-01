@@ -126,7 +126,7 @@ func UnsubscribeChannel(d *db.DB, personaID, channelID int64) error {
 // GetSubscribedChannels returns all channels a persona is subscribed to.
 func GetSubscribedChannels(d *db.DB, personaID int64) ([]Channel, error) {
 	rows, err := d.SQL.Query(
-		`SELECT c.id, c.name, c.description, c.created_at
+		`SELECT c.`+channelCols+`
 		 FROM channels c
 		 INNER JOIN persona_channels pc ON pc.channel_id = c.id
 		 WHERE pc.persona_id = ?
@@ -140,8 +140,8 @@ func GetSubscribedChannels(d *db.DB, personaID int64) ([]Channel, error) {
 
 	var channels []Channel
 	for rows.Next() {
-		var ch Channel
-		if err := rows.Scan(&ch.ID, &ch.Name, &ch.Description, &ch.CreatedAt); err != nil {
+		ch, err := scanChannel(rows)
+		if err != nil {
 			return nil, err
 		}
 		channels = append(channels, ch)

@@ -1,6 +1,7 @@
 package model_test
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/waynenilsen/waynebot/internal/model"
@@ -18,6 +19,9 @@ func TestCreateChannel(t *testing.T) {
 	}
 	if ch.Description != "General discussion" {
 		t.Errorf("description = %q, want %q", ch.Description, "General discussion")
+	}
+	if ch.IsDM {
+		t.Error("expected IsDM = false for regular channel")
 	}
 }
 
@@ -97,5 +101,143 @@ func TestCreateChannelDuplicateName(t *testing.T) {
 	_, err := model.CreateChannel(d, "unique", "")
 	if err == nil {
 		t.Error("expected error for duplicate name")
+	}
+}
+
+func TestListChannelsExcludesDMs(t *testing.T) {
+	d := openTestDB(t)
+
+	alice, _ := model.CreateUser(d, "alice", "hash")
+	bob, _ := model.CreateUser(d, "bob", "hash")
+	model.CreateChannel(d, "general", "")
+
+	p1 := model.DMParticipant{UserID: &alice.ID}
+	p2 := model.DMParticipant{UserID: &bob.ID}
+	_, err := model.CreateDMChannel(d, "dm-alice-bob", p1, p2, alice.ID)
+	if err != nil {
+		t.Fatalf("CreateDMChannel: %v", err)
+	}
+
+	channels, err := model.ListChannels(d)
+	if err != nil {
+		t.Fatalf("ListChannels: %v", err)
+	}
+	if len(channels) != 1 {
+		t.Errorf("len = %d, want 1 (DM should be excluded)", len(channels))
+	}
+}
+
+func TestCreateDMChannel(t *testing.T) {
+	d := openTestDB(t)
+
+	alice, _ := model.CreateUser(d, "alice", "hash")
+	bob, _ := model.CreateUser(d, "bob", "hash")
+
+	p1 := model.DMParticipant{UserID: &alice.ID}
+	p2 := model.DMParticipant{UserID: &bob.ID}
+	ch, err := model.CreateDMChannel(d, "dm-alice-bob", p1, p2, alice.ID)
+	if err != nil {
+		t.Fatalf("CreateDMChannel: %v", err)
+	}
+	if !ch.IsDM {
+		t.Error("expected IsDM = true")
+	}
+	if ch.CreatedBy == nil || *ch.CreatedBy != alice.ID {
+		t.Errorf("CreatedBy = %v, want %d", ch.CreatedBy, alice.ID)
+	}
+}
+
+func TestCreateDMChannelWithPersonaAutoSubscribes(t *testing.T) {
+	d := openTestDB(t)
+
+	alice, _ := model.CreateUser(d, "alice", "hash")
+	bot, _ := model.CreatePersona(d, "bot", "system", "model", nil, 0.7, 4096, 30, 100000)
+
+	p1 := model.DMParticipant{UserID: &alice.ID}
+	p2 := model.DMParticipant{PersonaID: &bot.ID}
+	ch, err := model.CreateDMChannel(d, "dm-alice-bot", p1, p2, alice.ID)
+	if err != nil {
+		t.Fatalf("CreateDMChannel: %v", err)
+	}
+
+	subs, err := model.GetSubscribedChannels(d, bot.ID)
+	if err != nil {
+		t.Fatalf("GetSubscribedChannels: %v", err)
+	}
+	if len(subs) != 1 || subs[0].ID != ch.ID {
+		t.Errorf("expected persona auto-subscribed to DM channel, got %v", subs)
+	}
+}
+
+func TestFindDMChannel(t *testing.T) {
+	d := openTestDB(t)
+
+	alice, _ := model.CreateUser(d, "alice", "hash")
+	bob, _ := model.CreateUser(d, "bob", "hash")
+
+	p1 := model.DMParticipant{UserID: &alice.ID}
+	p2 := model.DMParticipant{UserID: &bob.ID}
+	created, _ := model.CreateDMChannel(d, "dm-alice-bob", p1, p2, alice.ID)
+
+	found, err := model.FindDMChannel(d, p1, p2)
+	if err != nil {
+		t.Fatalf("FindDMChannel: %v", err)
+	}
+	if found.ID != created.ID {
+		t.Errorf("found.ID = %d, want %d", found.ID, created.ID)
+	}
+}
+
+func TestFindDMChannelNotFound(t *testing.T) {
+	d := openTestDB(t)
+
+	alice, _ := model.CreateUser(d, "alice", "hash")
+	bob, _ := model.CreateUser(d, "bob", "hash")
+
+	p1 := model.DMParticipant{UserID: &alice.ID}
+	p2 := model.DMParticipant{UserID: &bob.ID}
+	_, err := model.FindDMChannel(d, p1, p2)
+	if err != sql.ErrNoRows {
+		t.Errorf("expected sql.ErrNoRows, got %v", err)
+	}
+}
+
+func TestListDMsForUser(t *testing.T) {
+	d := openTestDB(t)
+
+	alice, _ := model.CreateUser(d, "alice", "hash")
+	bob, _ := model.CreateUser(d, "bob", "hash")
+	carol, _ := model.CreateUser(d, "carol", "hash")
+
+	pa := model.DMParticipant{UserID: &alice.ID}
+	pb := model.DMParticipant{UserID: &bob.ID}
+	pc := model.DMParticipant{UserID: &carol.ID}
+
+	model.CreateDMChannel(d, "dm-alice-bob", pa, pb, alice.ID)
+	model.CreateDMChannel(d, "dm-alice-carol", pa, pc, alice.ID)
+	model.CreateDMChannel(d, "dm-bob-carol", pb, pc, bob.ID)
+
+	dms, err := model.ListDMsForUser(d, alice.ID)
+	if err != nil {
+		t.Fatalf("ListDMsForUser: %v", err)
+	}
+	if len(dms) != 2 {
+		t.Errorf("len = %d, want 2", len(dms))
+	}
+
+	dms, err = model.ListDMsForUser(d, bob.ID)
+	if err != nil {
+		t.Fatalf("ListDMsForUser: %v", err)
+	}
+	if len(dms) != 2 {
+		t.Errorf("len = %d, want 2", len(dms))
+	}
+
+	dms, err = model.ListDMsForUser(d, carol.ID)
+	if err != nil {
+		t.Fatalf("ListDMsForUser: %v", err)
+	}
+	if len(dms) != 2 {
+		t.Errorf("len = %d, want 2", len(dms))
 	}
 }

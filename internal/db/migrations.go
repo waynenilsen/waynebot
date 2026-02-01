@@ -161,6 +161,22 @@ CREATE TABLE reactions (
 CREATE INDEX idx_reactions_message_id ON reactions(message_id);
 `,
 	},
+	{
+		Version: 5,
+		SQL: `
+ALTER TABLE channels ADD COLUMN is_dm BOOLEAN NOT NULL DEFAULT 0;
+ALTER TABLE channels ADD COLUMN created_by INTEGER;
+
+CREATE TABLE dm_participants (
+    channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    user_id    INTEGER,
+    persona_id INTEGER,
+    UNIQUE (channel_id, user_id, persona_id)
+);
+CREATE INDEX idx_dm_participants_user ON dm_participants(user_id);
+CREATE INDEX idx_dm_participants_persona ON dm_participants(persona_id);
+`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

@@ -199,6 +199,9 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 			}
 			a.Decision.RecordResponse(a.Persona.ID, ch.ID)
 			a.broadcastContextBudget(ch.ID, budget)
+
+			// Extract memories from the conversation asynchronously.
+			go a.extractMemories(ctx, ch, history, projects)
 			return
 		}
 
@@ -352,6 +355,20 @@ func (a *Actor) broadcastContextBudget(channelID int64, budget ContextBudget) {
 			"exhausted":        budget.Exhausted,
 		},
 	})
+}
+
+// extractMemories runs the memory extraction pipeline in the background.
+func (a *Actor) extractMemories(ctx context.Context, ch model.Channel, history []model.Message, projects []model.Project) {
+	if a.Embedding == nil {
+		return
+	}
+	me := &MemoryExtractor{
+		DB:        a.DB,
+		LLM:       a.LLM,
+		Embedding: a.Embedding,
+		Hub:       a.Hub,
+	}
+	me.Extract(ctx, a.Persona, ch.ID, history, projects)
 }
 
 // reverseMessages reverses a slice of messages in place.

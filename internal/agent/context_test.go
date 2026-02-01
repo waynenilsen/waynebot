@@ -13,11 +13,15 @@ import (
 
 // mockEmbedding implements EmbeddingClient for tests.
 type mockEmbedding struct {
-	vector []float32
-	err    error
+	vector    []float32
+	err       error
+	embedFunc func(ctx context.Context, text string) ([]float32, error)
 }
 
-func (m *mockEmbedding) Embed(_ context.Context, _ string) ([]float32, error) {
+func (m *mockEmbedding) Embed(ctx context.Context, text string) ([]float32, error) {
+	if m.embedFunc != nil {
+		return m.embedFunc(ctx, text)
+	}
 	return m.vector, m.err
 }
 

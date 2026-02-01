@@ -470,6 +470,127 @@ func TestTruncateDecisions(t *testing.T) {
 	}
 }
 
+func TestAssembleContextAgentsmdTruncation(t *testing.T) {
+	d := openTestDB(t)
+
+	persona, err := model.CreatePersona(d, "truncbot", "Base prompt.", "test-model",
+		nil, 0.7, 100, 0, 0)
+	if err != nil {
+		t.Fatalf("create persona: %v", err)
+	}
+
+	ch, err := model.CreateChannel(d, "trunc-test", "", 0)
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+
+	projDir := t.TempDir()
+	// Write an AGENTS.md larger than maxAgentsmdChars (16000).
+	bigContent := strings.Repeat("x", 20_000)
+	if err := os.WriteFile(filepath.Join(projDir, "AGENTS.md"), []byte(bigContent), 0644); err != nil {
+		t.Fatalf("write AGENTS.md: %v", err)
+	}
+
+	proj, err := model.CreateProject(d, "truncproj", projDir, "truncation test")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	_, err = model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello")
+	if err != nil {
+		t.Fatalf("create message: %v", err)
+	}
+
+	history, _ := model.GetRecentMessages(d, ch.ID, 50)
+	reverseMessages(history)
+
+	assembler := &ContextAssembler{DB: d}
+
+	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+		Persona:   persona,
+		ChannelID: ch.ID,
+		Projects:  []model.Project{proj},
+		History:   history,
+	})
+
+	sysContent := msgs[0].OfSystem.Content.OfString.Value
+
+	if !strings.Contains(sysContent, "## Project Instructions (AGENTS.md)") {
+		t.Error("system message should contain AGENTS.md header even when truncated")
+	}
+	// The content should be truncated to maxAgentsmdChars (16000).
+	if budget.AgentsmdTokens > maxAgentsmdChars/4+100 {
+		t.Errorf("AgentsmdTokens = %d, expected roughly %d or less", budget.AgentsmdTokens, maxAgentsmdChars/4)
+	}
+	if budget.AgentsmdTokens == 0 {
+		t.Error("expected non-zero AgentsmdTokens for large AGENTS.md")
+	}
+}
+
+func TestAssembleContextDocsBudget(t *testing.T) {
+	d := openTestDB(t)
+
+	persona, err := model.CreatePersona(d, "budgetdocsbot", "Base prompt.", "test-model",
+		nil, 0.7, 100, 0, 0)
+	if err != nil {
+		t.Fatalf("create persona: %v", err)
+	}
+
+	ch, err := model.CreateChannel(d, "docsbudget-test", "", 0)
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+
+	projDir := t.TempDir()
+	wbDir := filepath.Join(projDir, ".waynebot")
+	if err := os.MkdirAll(wbDir, 0755); err != nil {
+		t.Fatalf("mkdir .waynebot: %v", err)
+	}
+
+	// Write ERD and PRD that together exceed maxDocumentChars (32000).
+	bigERD := strings.Repeat("E", 20_000)
+	bigPRD := strings.Repeat("P", 20_000)
+	os.WriteFile(filepath.Join(wbDir, "erd.md"), []byte(bigERD), 0644)
+	os.WriteFile(filepath.Join(wbDir, "prd.md"), []byte(bigPRD), 0644)
+
+	proj, err := model.CreateProject(d, "budgetdocsproj", projDir, "docs budget test")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	_, err = model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello")
+	if err != nil {
+		t.Fatalf("create message: %v", err)
+	}
+
+	history, _ := model.GetRecentMessages(d, ch.ID, 50)
+	reverseMessages(history)
+
+	assembler := &ContextAssembler{DB: d}
+
+	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+		Persona:   persona,
+		ChannelID: ch.ID,
+		Projects:  []model.Project{proj},
+		History:   history,
+	})
+
+	sysContent := msgs[0].OfSystem.Content.OfString.Value
+
+	if !strings.Contains(sysContent, "## Project Documents") {
+		t.Error("system message should contain Project Documents header")
+	}
+
+	// DocumentTokens should be capped at roughly maxDocumentChars/4.
+	maxExpectedTokens := maxDocumentChars/4 + 100
+	if budget.DocumentTokens > maxExpectedTokens {
+		t.Errorf("DocumentTokens = %d, expected at most ~%d", budget.DocumentTokens, maxExpectedTokens)
+	}
+	if budget.DocumentTokens == 0 {
+		t.Error("expected non-zero DocumentTokens")
+	}
+}
+
 func TestEstimateTokens(t *testing.T) {
 	got := EstimateTokens("Hello world!") // 12 chars = 3 tokens
 	if got != 3 {

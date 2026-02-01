@@ -118,6 +118,31 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 			},
 		},
 	},
+	"memory_search": {
+		Function: shared.FunctionDefinitionParam{
+			Name:        "memory_search",
+			Description: param.NewOpt("Search your memories and project context for relevant information. Use this when you need to recall past decisions, facts, or context that may not be in your current conversation window."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{
+						"type":        "string",
+						"description": "What to search for in your memories.",
+					},
+					"kind": map[string]any{
+						"type":        "string",
+						"enum":        []string{"fact", "decision", "preference"},
+						"description": "Optional filter by memory kind.",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Max results to return. Defaults to 10.",
+					},
+				},
+				"required": []string{"query"},
+			},
+		},
+	},
 	"message_react": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "message_react",

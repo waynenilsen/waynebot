@@ -56,6 +56,7 @@ func main() {
 	})
 	toolsRegistry.Register("message_react", tools.MessageReact(database, hub))
 	embeddingClient := embedding.NewClient(cfg.OpenRouterKey)
+	toolsRegistry.Register("memory_search", tools.MemorySearch(database, embeddingClient))
 	supervisor := agent.NewSupervisor(database, hub, llmClient, embeddingClient, toolsRegistry)
 
 	if err := supervisor.StartAll(); err != nil {

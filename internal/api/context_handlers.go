@@ -23,7 +23,6 @@ type contextBudgetJSON struct {
 	TotalTokens     int   `json:"total_tokens"`
 	SystemTokens    int   `json:"system_tokens"`
 	ProjectTokens   int   `json:"project_tokens"`
-	MemoryTokens    int   `json:"memory_tokens"`
 	HistoryTokens   int   `json:"history_tokens"`
 	HistoryMessages int   `json:"history_messages"`
 	Exhausted       bool  `json:"exhausted"`
@@ -69,11 +68,8 @@ func (h *ContextHandler) ContextBudget(w http.ResponseWriter, r *http.Request) {
 		projects = nil
 	}
 
-	assembler := &agent.ContextAssembler{
-		DB:        h.DB,
-		Embedding: h.Supervisor.Embedding,
-	}
-	_, budget := assembler.AssembleContext(r.Context(), agent.AssembleInput{
+	assembler := &agent.ContextAssembler{}
+	_, budget := assembler.AssembleContext(agent.AssembleInput{
 		Persona:   persona,
 		ChannelID: channelID,
 		Projects:  projects,
@@ -86,7 +82,6 @@ func (h *ContextHandler) ContextBudget(w http.ResponseWriter, r *http.Request) {
 		TotalTokens:     budget.TotalTokens,
 		SystemTokens:    budget.SystemTokens,
 		ProjectTokens:   budget.ProjectTokens,
-		MemoryTokens:    budget.MemoryTokens,
 		HistoryTokens:   budget.HistoryTokens,
 		HistoryMessages: budget.HistoryMessages,
 		Exhausted:       budget.Exhausted,

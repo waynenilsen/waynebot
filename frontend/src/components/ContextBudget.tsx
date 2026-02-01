@@ -65,7 +65,6 @@ export default function ContextBudgetBar({
   const used =
     budget.system_tokens +
     budget.project_tokens +
-    budget.memory_tokens +
     budget.history_tokens;
   const pct = budget.total_tokens > 0 ? (used / budget.total_tokens) * 100 : 0;
   const warning = pct > 80;

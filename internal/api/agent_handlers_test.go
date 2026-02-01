@@ -29,7 +29,7 @@ func newTestRouterWithSupervisor(t *testing.T, d *db.DB) (http.Handler, *agent.S
 	go hub.Run()
 	t.Cleanup(func() { hub.Stop() })
 
-	sup := agent.NewSupervisor(d, hub, idleLLM{}, nil, tools.NewRegistry())
+	sup := agent.NewSupervisor(d, hub, idleLLM{}, tools.NewRegistry())
 	router := api.NewRouter(d, []string{"*"}, hub, sup)
 	return router, sup
 }

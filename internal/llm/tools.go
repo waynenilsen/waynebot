@@ -122,25 +122,36 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 			},
 		},
 	},
+	"memory_save": {
+		Function: shared.FunctionDefinitionParam{
+			Name:        "memory_save",
+			Description: param.NewOpt("Save a memory to a markdown file in the project's ./memories/ directory. Use this to persist important facts, decisions, or preferences for future reference. The filename is auto-generated from the current date and a kebab-case title you provide."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"title": map[string]any{
+						"type":        "string",
+						"description": "Short kebab-case title for the memory file (e.g. 'user-prefers-go', 'db-migration-plan').",
+					},
+					"content": map[string]any{
+						"type":        "string",
+						"description": "The memory content to save (markdown).",
+					},
+				},
+				"required": []string{"title", "content"},
+			},
+		},
+	},
 	"memory_search": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "memory_search",
-			Description: param.NewOpt("Search your memories and project context for relevant information. Use this when you need to recall past decisions, facts, or context that may not be in your current conversation window."),
+			Description: param.NewOpt("Search memory files in the project's ./memories/ directory using keyword grep. Returns matching lines with filenames. Use this to recall past decisions, facts, or context."),
 			Parameters: shared.FunctionParameters{
 				"type": "object",
 				"properties": map[string]any{
 					"query": map[string]any{
 						"type":        "string",
-						"description": "What to search for in your memories.",
-					},
-					"kind": map[string]any{
-						"type":        "string",
-						"enum":        []string{"fact", "decision", "preference"},
-						"description": "Optional filter by memory kind.",
-					},
-					"limit": map[string]any{
-						"type":        "integer",
-						"description": "Max results to return. Defaults to 10.",
+						"description": "Keywords to search for in memory files.",
 					},
 				},
 				"required": []string{"query"},

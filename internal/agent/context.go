@@ -1,25 +1,17 @@
 package agent
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/openai/openai-go"
-	"github.com/waynenilsen/waynebot/internal/db"
 	"github.com/waynenilsen/waynebot/internal/model"
 )
 
 // DefaultContextWindow is the default token budget when not specified.
 const DefaultContextWindow = 200_000
-
-// EmbeddingClient is the interface for embedding text, enabling test mocks.
-type EmbeddingClient interface {
-	Embed(ctx context.Context, text string) ([]float32, error)
-}
 
 // ContextBudget tracks how the token budget was allocated across sections.
 type ContextBudget struct {
@@ -28,17 +20,13 @@ type ContextBudget struct {
 	ProjectTokens   int
 	AgentsmdTokens  int
 	DocumentTokens  int
-	MemoryTokens    int
 	HistoryTokens   int
 	HistoryMessages int
 	Exhausted       bool
 }
 
 // ContextAssembler builds the LLM message array with priority-ordered sections.
-type ContextAssembler struct {
-	DB        *db.DB
-	Embedding EmbeddingClient
-}
+type ContextAssembler struct{}
 
 // AssembleInput holds everything needed to assemble context.
 type AssembleInput struct {
@@ -58,9 +46,8 @@ func EstimateTokens(text string) int {
 // 1. System prompt (always)
 // 2. Project context + AGENTS.md (if project associated)
 // 3. Project documents — erd, prd, recent decisions (if they exist)
-// 4. Retrieved memories (semantic search)
-// 5. Channel message history (fills remaining budget)
-func (ca *ContextAssembler) AssembleContext(ctx context.Context, input AssembleInput) ([]openai.ChatCompletionMessageParamUnion, ContextBudget) {
+// 4. Channel message history (fills remaining budget)
+func (ca *ContextAssembler) AssembleContext(input AssembleInput) ([]openai.ChatCompletionMessageParamUnion, ContextBudget) {
 	budget := ContextBudget{}
 	tokenLimit := input.TokenLimit
 	if tokenLimit <= 0 {
@@ -93,24 +80,8 @@ func (ca *ContextAssembler) AssembleContext(ctx context.Context, input AssembleI
 	budget.SystemTokens = EstimateTokens(systemPrompt)
 	remaining -= budget.SystemTokens
 
-	// 2. Retrieve memories via semantic search.
-	memoriesBlock := ca.retrieveMemories(ctx, input)
-	memTokens := EstimateTokens(memoriesBlock)
-	if memTokens > remaining {
-		memoriesBlock = ""
-		memTokens = 0
-	}
-	budget.MemoryTokens = memTokens
-	remaining -= memTokens
-
-	// Combine system prompt + memories into a single system message.
-	fullSystem := systemPrompt
-	if memoriesBlock != "" {
-		fullSystem += "\n\n" + memoriesBlock
-	}
-
 	msgs := make([]openai.ChatCompletionMessageParamUnion, 0, len(input.History)+1)
-	msgs = append(msgs, openai.SystemMessage(fullSystem))
+	msgs = append(msgs, openai.SystemMessage(systemPrompt))
 
 	// 3. Fill remaining budget with history messages (newest have priority).
 	// Walk from newest to oldest, accumulating tokens, then reverse.
@@ -148,65 +119,6 @@ func (ca *ContextAssembler) AssembleContext(ctx context.Context, input AssembleI
 	}
 
 	return msgs, budget
-}
-
-// retrieveMemories embeds recent messages as a query and searches for relevant memories.
-func (ca *ContextAssembler) retrieveMemories(ctx context.Context, input AssembleInput) string {
-	if ca.Embedding == nil {
-		return ""
-	}
-
-	// Build query from last few messages (up to 5).
-	queryMessages := input.History
-	if len(queryMessages) > 5 {
-		queryMessages = queryMessages[len(queryMessages)-5:]
-	}
-	if len(queryMessages) == 0 {
-		return ""
-	}
-
-	var queryParts []string
-	for _, m := range queryMessages {
-		queryParts = append(queryParts, m.Content)
-	}
-	query := strings.Join(queryParts, "\n")
-
-	queryEmbedding, err := ca.Embedding.Embed(ctx, query)
-	if err != nil {
-		slog.Error("context: embed query for memory search", "error", err)
-		return ""
-	}
-
-	// Search memories scoped to this persona. Include both channel-specific and global (nil channel).
-	filter := model.MemoryFilter{}
-	memories, err := model.SearchMemories(ca.DB, input.Persona.ID, queryEmbedding, 10, filter)
-	if err != nil {
-		slog.Error("context: search memories", "error", err)
-		return ""
-	}
-
-	if len(memories) == 0 {
-		return ""
-	}
-
-	// Filter to a reasonable similarity threshold.
-	var relevant []model.ScoredMemory
-	for _, m := range memories {
-		if m.Score >= 0.3 {
-			relevant = append(relevant, m)
-		}
-	}
-
-	if len(relevant) == 0 {
-		return ""
-	}
-
-	var sb strings.Builder
-	sb.WriteString("## Relevant Memories\n")
-	for _, m := range relevant {
-		sb.WriteString(fmt.Sprintf("- [%s] %s\n", m.Kind, m.Content))
-	}
-	return sb.String()
 }
 
 // formatProjectContext builds the project context string for the system prompt.

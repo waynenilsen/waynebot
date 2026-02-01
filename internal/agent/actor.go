@@ -28,16 +28,15 @@ const (
 // Actor is the per-persona processing loop. It listens for notifications from the
 // WebSocket hub and processes new messages in subscribed channels.
 type Actor struct {
-	Persona   model.Persona
-	DB        *db.DB
-	Hub       *ws.Hub
-	LLM       LLMClient
-	Embedding EmbeddingClient
-	Tools     *tools.Registry
-	Status    *StatusTracker
-	Cursors   *CursorStore
-	Decision  *DecisionMaker
-	Budget    *BudgetChecker
+	Persona  model.Persona
+	DB       *db.DB
+	Hub      *ws.Hub
+	LLM      LLMClient
+	Tools    *tools.Registry
+	Status   *StatusTracker
+	Cursors  *CursorStore
+	Decision *DecisionMaker
+	Budget   *BudgetChecker
 }
 
 // Run starts the actor's processing loop. It blocks until ctx is cancelled.
@@ -145,12 +144,8 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 		slog.Error("actor: list channel projects", "persona", a.Persona.Name, "channel_id", ch.ID, "error", err)
 	}
 
-	// Use the context assembler to build messages with RAG.
-	assembler := &ContextAssembler{
-		DB:        a.DB,
-		Embedding: a.Embedding,
-	}
-	messages, budget := assembler.AssembleContext(ctx, AssembleInput{
+	assembler := &ContextAssembler{}
+	messages, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   a.Persona,
 		ChannelID: ch.ID,
 		Projects:  projects,
@@ -173,7 +168,6 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 			"persona", a.Persona.Name,
 			"channel_id", ch.ID,
 			"history_messages", budget.HistoryMessages,
-			"memory_tokens", budget.MemoryTokens,
 		)
 	}
 
@@ -199,9 +193,6 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 			}
 			a.Decision.RecordResponse(a.Persona.ID, ch.ID)
 			a.broadcastContextBudget(ch.ID, budget)
-
-			// Extract memories from the conversation asynchronously.
-			go a.extractMemories(ctx, ch, history, projects)
 			return
 		}
 
@@ -358,26 +349,11 @@ func (a *Actor) broadcastContextBudget(channelID int64, budget ContextBudget) {
 			"total_tokens":     budget.TotalTokens,
 			"system_tokens":    budget.SystemTokens,
 			"project_tokens":   budget.ProjectTokens,
-			"memory_tokens":    budget.MemoryTokens,
 			"history_tokens":   budget.HistoryTokens,
 			"history_messages": budget.HistoryMessages,
 			"exhausted":        budget.Exhausted,
 		},
 	})
-}
-
-// extractMemories runs the memory extraction pipeline in the background.
-func (a *Actor) extractMemories(ctx context.Context, ch model.Channel, history []model.Message, projects []model.Project) {
-	if a.Embedding == nil {
-		return
-	}
-	me := &MemoryExtractor{
-		DB:        a.DB,
-		LLM:       a.LLM,
-		Embedding: a.Embedding,
-		Hub:       a.Hub,
-	}
-	me.Extract(ctx, a.Persona, ch.ID, history, projects)
 }
 
 // reverseMessages reverses a slice of messages in place.

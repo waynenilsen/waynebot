@@ -249,6 +249,10 @@ CREATE INDEX idx_memories_project ON memories(project_id);
 CREATE INDEX idx_memories_kind ON memories(kind);
 `,
 	},
+	{
+		Version: 11,
+		SQL:     `DROP TABLE IF EXISTS memories;`,
+	},
 }
 
 // migrate runs all pending migrations inside a transaction.

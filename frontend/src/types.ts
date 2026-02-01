@@ -163,7 +163,6 @@ export interface ContextBudget {
   total_tokens: number;
   system_tokens: number;
   project_tokens: number;
-  memory_tokens: number;
   history_tokens: number;
   history_messages: number;
   exhausted: boolean;

@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,45 +10,20 @@ import (
 	"github.com/waynenilsen/waynebot/internal/model"
 )
 
-// mockEmbedding implements EmbeddingClient for tests.
-type mockEmbedding struct {
-	vector    []float32
-	err       error
-	embedFunc func(ctx context.Context, text string) ([]float32, error)
-}
-
-func (m *mockEmbedding) Embed(ctx context.Context, text string) ([]float32, error) {
-	if m.embedFunc != nil {
-		return m.embedFunc(ctx, text)
-	}
-	return m.vector, m.err
-}
-
 func TestAssembleContextPriorityOrdering(t *testing.T) {
 	d := openTestDB(t)
 
-	// Create a persona with a system prompt.
-	persona, err := model.CreatePersona(d, "membot", "You are helpful.", "test-model",
+	persona, err := model.CreatePersona(d, "testbot", "You are helpful.", "test-model",
 		nil, 0.7, 100, 0, 0)
 	if err != nil {
 		t.Fatalf("create persona: %v", err)
 	}
 
-	// Create a channel and some history.
 	ch, err := model.CreateChannel(d, "general", "", 0)
 	if err != nil {
 		t.Fatalf("create channel: %v", err)
 	}
 
-	// Create a memory with a known embedding.
-	vec := make([]float32, 1536)
-	vec[0] = 1.0 // simple unit vector
-	_, err = model.CreateMemory(d, persona.ID, nil, nil, "fact", "User prefers Go over Rust", vec, nil)
-	if err != nil {
-		t.Fatalf("create memory: %v", err)
-	}
-
-	// Create history messages.
 	for i := 0; i < 3; i++ {
 		_, err := model.CreateMessage(d, ch.ID, 999, "human", "alice", "Hello message")
 		if err != nil {
@@ -60,20 +34,14 @@ func TestAssembleContextPriorityOrdering(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{
-		DB: d,
-		Embedding: &mockEmbedding{
-			vector: vec, // same vector = perfect cosine similarity
-		},
-	}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		History:   history,
 	})
 
-	// First message should be system message containing both prompt and memories.
 	if len(msgs) == 0 {
 		t.Fatal("expected at least one message")
 	}
@@ -85,19 +53,7 @@ func TestAssembleContextPriorityOrdering(t *testing.T) {
 	if !strings.Contains(sysContent, "You are helpful.") {
 		t.Error("system message should contain persona prompt")
 	}
-	if !strings.Contains(sysContent, "## Relevant Memories") {
-		t.Error("system message should contain retrieved memories")
-	}
-	if !strings.Contains(sysContent, "User prefers Go over Rust") {
-		t.Error("system message should contain the actual memory content")
-	}
 
-	// Budget should reflect memory tokens.
-	if budget.MemoryTokens == 0 {
-		t.Error("expected non-zero memory tokens in budget")
-	}
-
-	// History messages should follow.
 	if budget.HistoryMessages != 3 {
 		t.Errorf("expected 3 history messages, got %d", budget.HistoryMessages)
 	}
@@ -117,7 +73,6 @@ func TestAssembleContextBudgetExhaustion(t *testing.T) {
 		t.Fatalf("create channel: %v", err)
 	}
 
-	// Create many messages with substantial content.
 	for i := 0; i < 20; i++ {
 		_, err := model.CreateMessage(d, ch.ID, 999, "human", "alice", strings.Repeat("word ", 100))
 		if err != nil {
@@ -128,14 +83,13 @@ func TestAssembleContextBudgetExhaustion(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	// Use a very tight token budget.
-	_, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	_, budget := assembler.AssembleContext(AssembleInput{
 		Persona:    persona,
 		ChannelID:  ch.ID,
 		History:    history,
-		TokenLimit: 300, // very small
+		TokenLimit: 300,
 	})
 
 	if !budget.Exhausted {
@@ -144,22 +98,21 @@ func TestAssembleContextBudgetExhaustion(t *testing.T) {
 	if budget.HistoryMessages >= 20 {
 		t.Errorf("expected fewer than 20 history messages, got %d", budget.HistoryMessages)
 	}
-	// Newest messages should be included (priority to recent).
 	if budget.HistoryMessages == 0 {
 		t.Error("expected at least some history messages")
 	}
 }
 
-func TestAssembleContextNoEmbedding(t *testing.T) {
+func TestAssembleContextBasic(t *testing.T) {
 	d := openTestDB(t)
 
-	persona, err := model.CreatePersona(d, "noembedbot", "You are a bot.", "test-model",
+	persona, err := model.CreatePersona(d, "basicbot", "You are a bot.", "test-model",
 		nil, 0.7, 100, 0, 0)
 	if err != nil {
 		t.Fatalf("create persona: %v", err)
 	}
 
-	ch, err := model.CreateChannel(d, "no-embed", "", 0)
+	ch, err := model.CreateChannel(d, "basic", "", 0)
 	if err != nil {
 		t.Fatalf("create channel: %v", err)
 	}
@@ -172,18 +125,14 @@ func TestAssembleContextNoEmbedding(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	// No embedding client — memories should be skipped gracefully.
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, _ := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		History:   history,
 	})
 
-	if budget.MemoryTokens != 0 {
-		t.Errorf("expected 0 memory tokens without embedding client, got %d", budget.MemoryTokens)
-	}
 	if len(msgs) != 2 { // system + 1 history
 		t.Errorf("expected 2 messages, got %d", len(msgs))
 	}
@@ -216,9 +165,9 @@ func TestAssembleContextWithProjectContext(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -274,9 +223,9 @@ func TestAssembleContextWithAgentsMd(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -309,7 +258,6 @@ func TestAssembleContextWithoutAgentsMd(t *testing.T) {
 		t.Fatalf("create channel: %v", err)
 	}
 
-	// Project dir with no AGENTS.md
 	proj, err := model.CreateProject(d, "plainproject", t.TempDir(), "No agents file")
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -323,9 +271,9 @@ func TestAssembleContextWithoutAgentsMd(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	_, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	_, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -381,9 +329,9 @@ func TestAssembleContextWithProjectDocuments(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -423,7 +371,6 @@ func TestAssembleContextWithoutProjectDocuments(t *testing.T) {
 		t.Fatalf("create channel: %v", err)
 	}
 
-	// Project with no document directories.
 	proj, err := model.CreateProject(d, "nodocsproject", t.TempDir(), "No docs")
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -437,9 +384,9 @@ func TestAssembleContextWithoutProjectDocuments(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	_, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	_, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -452,7 +399,6 @@ func TestAssembleContextWithoutProjectDocuments(t *testing.T) {
 }
 
 func TestTruncateDecisions(t *testing.T) {
-	// Create 25 entries separated by ## headers.
 	var sb strings.Builder
 	for i := 1; i <= 25; i++ {
 		if i > 1 {
@@ -463,7 +409,6 @@ func TestTruncateDecisions(t *testing.T) {
 
 	result := truncateDecisions(sb.String(), 20)
 
-	// Should contain the last 20 entries (6-25) but not the first 5.
 	if strings.Contains(result, "Decision 5\n") {
 		t.Error("truncated decisions should not contain early entries")
 	}
@@ -490,7 +435,6 @@ func TestAssembleContextAgentsmdTruncation(t *testing.T) {
 	}
 
 	projDir := t.TempDir()
-	// Write an AGENTS.md larger than maxAgentsmdChars (16000).
 	bigContent := strings.Repeat("x", 20_000)
 	if err := os.WriteFile(filepath.Join(projDir, "AGENTS.md"), []byte(bigContent), 0644); err != nil {
 		t.Fatalf("write AGENTS.md: %v", err)
@@ -509,9 +453,9 @@ func TestAssembleContextAgentsmdTruncation(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -523,7 +467,6 @@ func TestAssembleContextAgentsmdTruncation(t *testing.T) {
 	if !strings.Contains(sysContent, "## Project Instructions (AGENTS.md)") {
 		t.Error("system message should contain AGENTS.md header even when truncated")
 	}
-	// The content should be truncated to maxAgentsmdChars (16000).
 	if budget.AgentsmdTokens > maxAgentsmdChars/4+100 {
 		t.Errorf("AgentsmdTokens = %d, expected roughly %d or less", budget.AgentsmdTokens, maxAgentsmdChars/4)
 	}
@@ -550,7 +493,6 @@ func TestAssembleContextDocsBudget(t *testing.T) {
 	os.MkdirAll(filepath.Join(projDir, "erd"), 0755)
 	os.MkdirAll(filepath.Join(projDir, "prd"), 0755)
 
-	// Write ERD and PRD that together exceed maxDocumentChars (32000).
 	bigERD := strings.Repeat("E", 20_000)
 	bigPRD := strings.Repeat("P", 20_000)
 	os.WriteFile(filepath.Join(projDir, "erd", "main.md"), []byte(bigERD), 0644)
@@ -569,9 +511,9 @@ func TestAssembleContextDocsBudget(t *testing.T) {
 	history, _ := model.GetRecentMessages(d, ch.ID, 50)
 	reverseMessages(history)
 
-	assembler := &ContextAssembler{DB: d}
+	assembler := &ContextAssembler{}
 
-	msgs, budget := assembler.AssembleContext(context.Background(), AssembleInput{
+	msgs, budget := assembler.AssembleContext(AssembleInput{
 		Persona:   persona,
 		ChannelID: ch.ID,
 		Projects:  []model.Project{proj},
@@ -584,7 +526,6 @@ func TestAssembleContextDocsBudget(t *testing.T) {
 		t.Error("system message should contain Project Documents header")
 	}
 
-	// DocumentTokens should be capped at roughly maxDocumentChars/4.
 	maxExpectedTokens := maxDocumentChars/4 + 100
 	if budget.DocumentTokens > maxExpectedTokens {
 		t.Errorf("DocumentTokens = %d, expected at most ~%d", budget.DocumentTokens, maxExpectedTokens)

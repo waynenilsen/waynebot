@@ -122,7 +122,12 @@ func (a *Actor) processChannel(ctx context.Context, ch model.Channel) {
 // respond builds history, calls the LLM (with tool call loop), and posts the final response.
 func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 	a.Status.Set(a.Persona.ID, StatusThinking)
-	defer a.Status.Set(a.Persona.ID, StatusIdle)
+	defer func() {
+		// Don't override terminal states like context_full or error.
+		if s := a.Status.Get(a.Persona.ID); s == StatusThinking || s == StatusToolCall {
+			a.Status.Set(a.Persona.ID, StatusIdle)
+		}
+	}()
 
 	history, err := model.GetRecentMessages(a.DB, ch.ID, 50)
 	if err != nil {
@@ -152,8 +157,19 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 		History:   history,
 	})
 
+	if budget.Exhausted && budget.HistoryMessages == 0 {
+		slog.Warn("actor: context window full, cannot process messages",
+			"persona", a.Persona.Name,
+			"channel_id", ch.ID,
+		)
+		a.Status.Set(a.Persona.ID, StatusContextFull)
+		a.postMessage(ch, "My context window is full. I cannot process new messages until context is reset. Please use `/reset-context` or start a new conversation thread.")
+		a.broadcastContextBudget(ch.ID, budget)
+		return
+	}
+
 	if budget.Exhausted {
-		slog.Info("actor: context budget exhausted",
+		slog.Info("actor: context budget partially exhausted",
 			"persona", a.Persona.Name,
 			"channel_id", ch.ID,
 			"history_messages", budget.HistoryMessages,
@@ -182,6 +198,7 @@ func (a *Actor) respond(ctx context.Context, ch model.Channel) {
 				a.postMessage(ch, resp.Content)
 			}
 			a.Decision.RecordResponse(a.Persona.ID, ch.ID)
+			a.broadcastContextBudget(ch.ID, budget)
 			return
 		}
 
@@ -315,6 +332,24 @@ func (a *Actor) recordToolExecution(toolName, argsJSON, output, errText string, 
 			"error_text":  errText,
 			"duration_ms": duration.Milliseconds(),
 			"created_at":  time.Now().UTC().Format(time.RFC3339),
+		},
+	})
+}
+
+// broadcastContextBudget sends context budget info via the WebSocket hub.
+func (a *Actor) broadcastContextBudget(channelID int64, budget ContextBudget) {
+	a.Hub.Broadcast(ws.Event{
+		Type: "agent_context_budget",
+		Data: map[string]any{
+			"persona_id":       a.Persona.ID,
+			"channel_id":       channelID,
+			"total_tokens":     budget.TotalTokens,
+			"system_tokens":    budget.SystemTokens,
+			"project_tokens":   budget.ProjectTokens,
+			"memory_tokens":    budget.MemoryTokens,
+			"history_tokens":   budget.HistoryTokens,
+			"history_messages": budget.HistoryMessages,
+			"exhausted":        budget.Exhausted,
 		},
 	})
 }

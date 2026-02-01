@@ -15,6 +15,7 @@ const (
 	StatusError
 	StatusStopped
 	StatusBudgetExceeded
+	StatusContextFull
 )
 
 func (s Status) String() string {
@@ -31,6 +32,8 @@ func (s Status) String() string {
 		return "stopped"
 	case StatusBudgetExceeded:
 		return "budget_exceeded"
+	case StatusContextFull:
+		return "context_full"
 	default:
 		return "unknown"
 	}

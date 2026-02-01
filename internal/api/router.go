@@ -109,6 +109,10 @@ func NewRouter(database *db.DB, corsOrigins []string, hub *ws.Hub, supervisor ..
 			r.With(auth.RequireAuth).Get("/agents/{persona_id}/llm-calls", agh.LLMCalls)
 			r.With(auth.RequireAuth).Get("/agents/{persona_id}/tool-executions", agh.ToolExecutions)
 			r.With(auth.RequireAuth).Get("/agents/{persona_id}/stats", agh.Stats)
+
+			ctxh := &ContextHandler{DB: database, Hub: hub, Supervisor: supervisor[0]}
+			r.With(auth.RequireAuth).Get("/agents/{persona_id}/context-budget", ctxh.ContextBudget)
+			r.With(auth.RequireAuth).Post("/agents/{persona_id}/channels/{channel_id}/reset-context", ctxh.ResetContext)
 		}
 	})
 

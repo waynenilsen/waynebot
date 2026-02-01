@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   Channel,
   ChannelMember,
+  ContextBudget,
   DMChannel,
   ReactionCount,
   Invite,
@@ -343,6 +344,27 @@ export async function removeChannelProject(
 
 export async function getMentionTargets(): Promise<MentionTarget[]> {
   return apiFetch<MentionTarget[]>("/api/mention-targets");
+}
+
+// Context budget
+
+export async function getContextBudget(
+  personaId: number,
+  channelId: number,
+): Promise<ContextBudget> {
+  return apiFetch<ContextBudget>(
+    `/api/agents/${personaId}/context-budget?channel_id=${channelId}`,
+  );
+}
+
+export async function resetContext(
+  personaId: number,
+  channelId: number,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/agents/${personaId}/channels/${channelId}/reset-context`,
+    { method: "POST" },
+  );
 }
 
 export { ApiError };

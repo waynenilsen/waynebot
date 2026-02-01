@@ -20,6 +20,7 @@ import MessageThread from "./components/MessageThread";
 import MessageCompose from "./components/MessageCompose";
 import ChannelSwitcher from "./components/ChannelSwitcher";
 import MembersPanel from "./components/MembersPanel";
+import ChannelContextBudgets from "./components/ChannelContextBudgets";
 
 function AuthenticatedApp({
   user,
@@ -198,6 +199,9 @@ function AuthenticatedApp({
                   onToggleMembers={() => setShowMembers((p) => !p)}
                   onToggleProjects={() => setShowProjects((p) => !p)}
                 />
+                {currentChannelId && (
+                  <ChannelContextBudgets channelId={currentChannelId} />
+                )}
                 <MessageCompose
                   onSend={sendMessage}
                   composeRef={composeRef}

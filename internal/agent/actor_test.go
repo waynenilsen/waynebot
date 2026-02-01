@@ -407,3 +407,55 @@ func TestActorNoProjectFallsBack(t *testing.T) {
 		t.Errorf("expected empty project dir, got %q", capturedDir)
 	}
 }
+
+func TestActorContextFullStatus(t *testing.T) {
+	s := newScenario(t)
+
+	// Make system prompt enormous so no history fits.
+	s.actor.Persona.SystemPrompt = strings.Repeat("x ", DefaultContextWindow*4)
+
+	s.postHumanMessage("Hi bot")
+
+	s.runOnce(context.Background())
+
+	// LLM should NOT be called.
+	if s.mock.callCount() != 0 {
+		t.Errorf("expected 0 LLM calls when context full, got %d", s.mock.callCount())
+	}
+
+	// Status should be context_full.
+	if s.actor.Status.Get(s.persona.ID) != StatusContextFull {
+		t.Errorf("expected status context_full, got %s", s.actor.Status.Get(s.persona.ID))
+	}
+
+	// Should have posted a context-full message.
+	msgs, _ := model.GetRecentMessages(s.actor.DB, s.channel.ID, 10)
+	var found bool
+	for _, m := range msgs {
+		if m.AuthorType == "agent" && strings.Contains(m.Content, "context window is full") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected context-full message to be posted")
+	}
+}
+
+func TestActorContextFullToIdleViaReset(t *testing.T) {
+	s := newScenario(t)
+
+	// Set status to context_full.
+	s.actor.Status.Set(s.persona.ID, StatusContextFull)
+
+	if s.actor.Status.Get(s.persona.ID) != StatusContextFull {
+		t.Fatalf("expected status context_full, got %s", s.actor.Status.Get(s.persona.ID))
+	}
+
+	// Reset status to idle (simulating what the API handler does).
+	s.actor.Status.Set(s.persona.ID, StatusIdle)
+
+	if s.actor.Status.Get(s.persona.ID) != StatusIdle {
+		t.Errorf("expected status idle after reset, got %s", s.actor.Status.Get(s.persona.ID))
+	}
+}

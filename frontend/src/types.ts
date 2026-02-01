@@ -145,3 +145,15 @@ export interface Project {
   description: string;
   created_at: string;
 }
+
+export interface ContextBudget {
+  persona_id: number;
+  channel_id: number;
+  total_tokens: number;
+  system_tokens: number;
+  project_tokens: number;
+  memory_tokens: number;
+  history_tokens: number;
+  history_messages: number;
+  exhausted: boolean;
+}

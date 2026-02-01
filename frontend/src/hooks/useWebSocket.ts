@@ -55,7 +55,8 @@ export function useWebSocket(authenticated: boolean) {
           updateReactions(data.channel_id, data.message_id, data.counts);
         } else if (
           event.type === "agent_llm_call" ||
-          event.type === "agent_tool_execution"
+          event.type === "agent_tool_execution" ||
+          event.type === "agent_context_budget"
         ) {
           window.dispatchEvent(
             new CustomEvent(event.type, { detail: event.data }),

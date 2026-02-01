@@ -146,6 +146,12 @@ export interface Project {
   created_at: string;
 }
 
+export interface ProjectDocument {
+  type: string;
+  content: string;
+  exists: boolean;
+}
+
 export interface ContextBudget {
   persona_id: number;
   channel_id: number;

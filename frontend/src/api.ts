@@ -13,6 +13,7 @@ import type {
   Message,
   Persona,
   Project,
+  ProjectDocument,
   ToolExecution,
   User,
 } from "./types";
@@ -315,6 +316,47 @@ export async function updateProject(
 
 export async function deleteProject(id: number): Promise<void> {
   return apiFetch<void>(`/api/projects/${id}`, { method: "DELETE" });
+}
+
+// Project Documents
+
+export async function getProjectDocuments(
+  projectId: number,
+): Promise<ProjectDocument[]> {
+  return apiFetch<ProjectDocument[]>(`/api/projects/${projectId}/documents`);
+}
+
+export async function getProjectDocument(
+  projectId: number,
+  type: string,
+): Promise<ProjectDocument> {
+  return apiFetch<ProjectDocument>(
+    `/api/projects/${projectId}/documents/${type}`,
+  );
+}
+
+export async function updateProjectDocument(
+  projectId: number,
+  type: string,
+  content: string,
+): Promise<ProjectDocument> {
+  return apiFetch<ProjectDocument>(
+    `/api/projects/${projectId}/documents/${type}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    },
+  );
+}
+
+export async function appendDecision(
+  projectId: number,
+  content: string,
+): Promise<void> {
+  return apiFetch<void>(`/api/projects/${projectId}/documents/decisions`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
 }
 
 export async function getChannelProjects(

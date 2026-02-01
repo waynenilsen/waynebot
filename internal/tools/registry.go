@@ -50,6 +50,7 @@ func (r *Registry) RegisterDefaults(cfg *SandboxConfig) {
 	r.Register("file_read", FileRead(cfg))
 	r.Register("file_write", FileWrite(cfg))
 	r.Register("http_fetch", HTTPFetch(cfg))
+	r.Register("project_docs", ProjectDocs(cfg))
 }
 
 // Names returns the sorted list of registered tool names.

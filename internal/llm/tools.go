@@ -92,6 +92,32 @@ var allTools = map[string]openai.ChatCompletionToolParam{
 			},
 		},
 	},
+	"project_docs": {
+		Function: shared.FunctionDefinitionParam{
+			Name:        "project_docs",
+			Description: param.NewOpt("Read, write, or list project documents (.waynebot/ directory). Use action=list to see which docs exist, action=read to read a doc, action=write to create/update erd or prd, action=append to add a timestamped entry to the decisions log."),
+			Parameters: shared.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"action": map[string]any{
+						"type":        "string",
+						"enum":        []string{"read", "write", "append", "list"},
+						"description": "The action to perform.",
+					},
+					"doc_type": map[string]any{
+						"type":        "string",
+						"enum":        []string{"erd", "prd", "decisions"},
+						"description": "The document type (required for read, write, append).",
+					},
+					"content": map[string]any{
+						"type":        "string",
+						"description": "Content to write or append (required for write and append).",
+					},
+				},
+				"required": []string{"action"},
+			},
+		},
+	},
 	"message_react": {
 		Function: shared.FunctionDefinitionParam{
 			Name:        "message_react",
